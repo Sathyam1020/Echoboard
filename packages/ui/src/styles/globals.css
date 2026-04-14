@@ -7,123 +7,515 @@
 @source "../../../components/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
-@theme inline {
-    --font-heading: var(--font-sans);
-    --color-sidebar-ring: var(--sidebar-ring);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar: var(--sidebar);
-    --color-chart-5: var(--chart-5);
-    --color-chart-4: var(--chart-4);
-    --color-chart-3: var(--chart-3);
-    --color-chart-2: var(--chart-2);
-    --color-chart-1: var(--chart-1);
-    --color-ring: var(--ring);
-    --color-input: var(--input);
-    --color-border: var(--border);
-    --color-destructive: var(--destructive);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-accent: var(--accent);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-muted: var(--muted);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-secondary: var(--secondary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-primary: var(--primary);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-popover: var(--popover);
-    --color-card-foreground: var(--card-foreground);
-    --color-card: var(--card);
-    --color-foreground: var(--foreground);
-    --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
-    --font-sans: var(--font-sans);
-}
+/*
+ * =========================================================
+ *  CANNY ALTERNATIVE — DESIGN SYSTEM
+ *  Tailwind CSS v4 + shadcn/ui
+ *
+ *  Primary: Teal/Green (unclaimed in competitor space)
+ *  Neutral: Warm stone (not cool zinc — feels more human)
+ *  Philosophy: Linear meets Plausible. Clean utility.
+ * =========================================================
+ */
+
+/* ---------------------------------------------------------
+   1. CSS VARIABLES — Light Mode (default)
+   Using OKLCH for perceptual uniformity.
+   shadcn expects background/foreground pairs.
+   --------------------------------------------------------- */
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+  /* ---- Radius ---- */
+  --radius: 0.5rem;
+
+  /* ---- Base surfaces ---- */
+  --background: oklch(0.985 0.002 75); /* warm off-white #FAFAF8 */
+  --foreground: oklch(0.145 0.005 75); /* near-black warm #1C1C1A */
+
+  /* ---- Card / Popover ---- */
+  --card: oklch(1 0 0); /* pure white */
+  --card-foreground: oklch(0.145 0.005 75);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0.005 75);
+
+  /* ---- Primary: Teal ---- */
+  --primary: oklch(0.47 0.12 168); /* #0F6E56 — your brand teal */
+  --primary-foreground: oklch(0.985 0.005 168); /* white-ish on teal */
+
+  /* ---- Secondary: Warm stone ---- */
+  --secondary: oklch(0.94 0.005 75); /* light warm gray #EFEDEA */
+  --secondary-foreground: oklch(0.25 0.005 75); /* dark warm gray */
+
+  /* ---- Muted: Subtle backgrounds ---- */
+  --muted: oklch(0.94 0.005 75);
+  --muted-foreground: oklch(0.52 0.01 75); /* mid warm gray */
+
+  /* ---- Accent: Teal tint for hover states ---- */
+  --accent: oklch(0.95 0.03 168); /* very light teal #E1F5EE */
+  --accent-foreground: oklch(0.3 0.08 168); /* dark teal text */
+
+  /* ---- Destructive ---- */
+  --destructive: oklch(0.55 0.2 25); /* red #A32D2D */
+  --destructive-foreground: oklch(0.985 0.01 25);
+
+  /* ---- Border / Input / Ring ---- */
+  --border: oklch(0.88 0.005 75); /* warm border #D9D7D2 */
+  --input: oklch(0.88 0.005 75);
+  --ring: oklch(0.47 0.12 168); /* teal focus ring */
+
+  /* ---- Sidebar (if using shadcn sidebar) ---- */
+  --sidebar: oklch(0.975 0.003 75);
+  --sidebar-foreground: oklch(0.145 0.005 75);
+  --sidebar-primary: oklch(0.47 0.12 168);
+  --sidebar-primary-foreground: oklch(0.985 0.005 168);
+  --sidebar-accent: oklch(0.95 0.03 168);
+  --sidebar-accent-foreground: oklch(0.3 0.08 168);
+  --sidebar-border: oklch(0.9 0.005 75);
+  --sidebar-ring: oklch(0.47 0.12 168);
+
+  /* ---- Chart colors (for recharts / shadcn charts) ---- */
+  --chart-1: oklch(0.47 0.12 168); /* teal primary */
+  --chart-2: oklch(0.55 0.15 250); /* blue */
+  --chart-3: oklch(0.65 0.15 55); /* amber */
+  --chart-4: oklch(0.55 0.18 340); /* pink */
+  --chart-5: oklch(0.5 0.12 300); /* purple */
+
+  /* ============================================
+     CUSTOM: Feedback-tool-specific tokens
+     ============================================ */
+
+  /* ---- Status colors ---- */
+  --status-review-bg: oklch(0.94 0.03 290); /* light purple #EEEDFE */
+  --status-review-text: oklch(0.35 0.12 290); /* dark purple #3C3489 */
+  --status-review-dot: oklch(0.45 0.15 290); /* purple dot #534AB7 */
+
+  --status-planned-bg: oklch(0.94 0.03 240); /* light blue #E6F1FB */
+  --status-planned-text: oklch(0.35 0.1 240); /* dark blue #0C447C */
+  --status-planned-dot: oklch(0.45 0.13 240); /* blue dot #185FA5 */
+
+  --status-progress-bg: oklch(0.95 0.05 85); /* light amber #FAEEDA */
+  --status-progress-text: oklch(0.32 0.08 55); /* dark amber #633806 */
+  --status-progress-dot: oklch(0.55 0.14 65); /* amber dot #BA7517 */
+
+  --status-shipped-bg: oklch(0.94 0.04 168); /* light teal #E1F5EE */
+  --status-shipped-text: oklch(0.28 0.07 168); /* dark teal #085041 */
+  --status-shipped-dot: oklch(0.47 0.12 168); /* teal dot #0F6E56 */
+
+  /* ---- MRR tag ---- */
+  --mrr-bg: oklch(0.94 0.04 168);
+  --mrr-text: oklch(0.47 0.12 168);
+
+  /* ---- Vote button ---- */
+  --vote-bg: oklch(0.96 0.003 75);
+  --vote-border: oklch(0.88 0.005 75);
+  --vote-text: oklch(0.52 0.01 75);
+  --vote-active-bg: oklch(0.94 0.04 168);
+  --vote-active-border: oklch(0.65 0.12 168);
+  --vote-active-text: oklch(0.4 0.12 168);
 }
+
+/* ---------------------------------------------------------
+   3. CSS VARIABLES — Dark Mode
+   --------------------------------------------------------- */
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.12 0.005 75); /* very dark warm #1A1917 */
+  --foreground: oklch(0.93 0.005 75); /* light warm #EDEDEA */
+
+  --card: oklch(0.16 0.005 75); /* dark card #232220 */
+  --card-foreground: oklch(0.93 0.005 75);
+
+  --popover: oklch(0.16 0.005 75);
+  --popover-foreground: oklch(0.93 0.005 75);
+
+  --primary: oklch(0.6 0.14 168); /* brighter teal for dark bg */
+  --primary-foreground: oklch(0.12 0.03 168); /* dark text on bright teal */
+
+  --secondary: oklch(0.22 0.005 75);
+  --secondary-foreground: oklch(0.88 0.005 75);
+
+  --muted: oklch(0.22 0.005 75);
+  --muted-foreground: oklch(0.6 0.008 75);
+
+  --accent: oklch(0.22 0.04 168);
+  --accent-foreground: oklch(0.8 0.08 168);
+
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.93 0.01 25);
+
+  --border: oklch(0.26 0.005 75);
+  --input: oklch(0.26 0.005 75);
+  --ring: oklch(0.6 0.14 168);
+
+  --sidebar: oklch(0.14 0.005 75);
+  --sidebar-foreground: oklch(0.93 0.005 75);
+  --sidebar-primary: oklch(0.6 0.14 168);
+  --sidebar-primary-foreground: oklch(0.12 0.03 168);
+  --sidebar-accent: oklch(0.22 0.04 168);
+  --sidebar-accent-foreground: oklch(0.8 0.08 168);
+  --sidebar-border: oklch(0.26 0.005 75);
+  --sidebar-ring: oklch(0.6 0.14 168);
+
+  --chart-1: oklch(0.6 0.14 168);
+  --chart-2: oklch(0.65 0.15 250);
+  --chart-3: oklch(0.7 0.14 55);
+  --chart-4: oklch(0.65 0.17 340);
+  --chart-5: oklch(0.6 0.12 300);
+
+  /* ---- Status (dark mode) ---- */
+  --status-review-bg: oklch(0.22 0.06 290);
+  --status-review-text: oklch(0.8 0.08 290);
+  --status-review-dot: oklch(0.65 0.12 290);
+
+  --status-planned-bg: oklch(0.22 0.05 240);
+  --status-planned-text: oklch(0.78 0.08 240);
+  --status-planned-dot: oklch(0.6 0.12 240);
+
+  --status-progress-bg: oklch(0.22 0.05 65);
+  --status-progress-text: oklch(0.8 0.1 65);
+  --status-progress-dot: oklch(0.7 0.14 65);
+
+  --status-shipped-bg: oklch(0.22 0.05 168);
+  --status-shipped-text: oklch(0.78 0.08 168);
+  --status-shipped-dot: oklch(0.6 0.14 168);
+
+  /* ---- MRR tag (dark) ---- */
+  --mrr-bg: oklch(0.22 0.05 168);
+  --mrr-text: oklch(0.75 0.1 168);
+
+  /* ---- Vote button (dark) ---- */
+  --vote-bg: oklch(0.18 0.003 75);
+  --vote-border: oklch(0.28 0.005 75);
+  --vote-text: oklch(0.6 0.008 75);
+  --vote-active-bg: oklch(0.22 0.05 168);
+  --vote-active-border: oklch(0.45 0.1 168);
+  --vote-active-text: oklch(0.75 0.1 168);
 }
 
+/* ---------------------------------------------------------
+   4. TAILWIND THEME MAPPING
+   Maps CSS variables to Tailwind utility classes.
+   bg-primary, text-foreground, border-border, etc.
+   --------------------------------------------------------- */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Custom tokens → Tailwind utilities
+     e.g. bg-status-planned-bg, text-mrr-text, etc. */
+  --color-status-review-bg: var(--status-review-bg);
+  --color-status-review-text: var(--status-review-text);
+  --color-status-review-dot: var(--status-review-dot);
+
+  --color-status-planned-bg: var(--status-planned-bg);
+  --color-status-planned-text: var(--status-planned-text);
+  --color-status-planned-dot: var(--status-planned-dot);
+
+  --color-status-progress-bg: var(--status-progress-bg);
+  --color-status-progress-text: var(--status-progress-text);
+  --color-status-progress-dot: var(--status-progress-dot);
+
+  --color-status-shipped-bg: var(--status-shipped-bg);
+  --color-status-shipped-text: var(--status-shipped-text);
+  --color-status-shipped-dot: var(--status-shipped-dot);
+
+  --color-mrr-bg: var(--mrr-bg);
+  --color-mrr-text: var(--mrr-text);
+
+  --color-vote-bg: var(--vote-bg);
+  --color-vote-border: var(--vote-border);
+  --color-vote-text: var(--vote-text);
+  --color-vote-active-bg: var(--vote-active-bg);
+  --color-vote-active-border: var(--vote-active-border);
+  --color-vote-active-text: var(--vote-active-text);
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Fonts */
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:
+    "Geist Mono", ui-monospace, "Cascadia Code", "Fira Code", monospace;
+}
+
+/* ---------------------------------------------------------
+   5. BASE STYLES
+   --------------------------------------------------------- */
+
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-    }
+  *,
+  *::before,
+  *::after {
+    @apply border-border;
+  }
+
   body {
     @apply bg-background text-foreground;
-    }
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Two weights only: 400 (normal) and 500 (medium). Never 600/700. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-medium tracking-tight;
+  }
+
+  /* Monospace for data-heavy elements */
+  [data-mono] {
+    @apply font-mono tabular-nums;
+  }
+}
+
+/* ---------------------------------------------------------
+   6. COMPONENT UTILITIES
+   Feedback-tool-specific components.
+   Use with @apply in React or reference classes directly.
+   --------------------------------------------------------- */
+
+@layer components {
+  /* ---- Status Badge ----
+     <span class="status-badge status-planned">Planned</span>
+     Auto-generates the colored dot via ::before
+  */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-xs font-medium;
+  }
+  .status-badge::before {
+    content: "";
+    @apply block size-1.5 shrink-0 rounded-full;
+  }
+  .status-review {
+    background-color: var(--status-review-bg);
+    color: var(--status-review-text);
+  }
+  .status-review::before {
+    background-color: var(--status-review-dot);
+  }
+  .status-planned {
+    background-color: var(--status-planned-bg);
+    color: var(--status-planned-text);
+  }
+  .status-planned::before {
+    background-color: var(--status-planned-dot);
+  }
+  .status-progress {
+    background-color: var(--status-progress-bg);
+    color: var(--status-progress-text);
+  }
+  .status-progress::before {
+    background-color: var(--status-progress-dot);
+  }
+  .status-shipped {
+    background-color: var(--status-shipped-bg);
+    color: var(--status-shipped-text);
+  }
+  .status-shipped::before {
+    background-color: var(--status-shipped-dot);
+  }
+
+  /* ---- MRR Tag ----
+     <span class="mrr-tag">$4,200/mo MRR</span>
+  */
+  .mrr-tag {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[11px] font-medium;
+    background-color: var(--mrr-bg);
+    color: var(--mrr-text);
+  }
+
+  /* ---- Vote Button ----
+     <button class="vote-btn">
+       <ChevronUp />
+       <span>47</span>
+     </button>
+     Add .vote-active class when user has voted
+  */
+  .vote-btn {
+    @apply flex cursor-pointer flex-col items-center justify-center rounded-lg text-sm font-medium transition-all duration-150 select-none;
+    width: 48px;
+    min-height: 52px;
+    background-color: var(--vote-bg);
+    border: 1px solid var(--vote-border);
+    color: var(--vote-text);
+  }
+  .vote-btn:hover {
+    border-color: var(--vote-active-border);
+    color: var(--vote-active-text);
+  }
+  .vote-btn:active {
+    transform: scale(0.96);
+  }
+  .vote-active,
+  .vote-active:hover {
+    background-color: var(--vote-active-bg);
+    border-color: var(--vote-active-border);
+    color: var(--vote-active-text);
+  }
+
+  /* ---- Feedback Card ----
+     <div class="feedback-card">
+       <VoteBtn /> <div>title, description, meta</div>
+     </div>
+  */
+  .feedback-card {
+    @apply flex gap-3 rounded-lg border bg-card p-3 transition-colors;
+  }
+  .feedback-card:hover {
+    @apply border-border/80 bg-accent/30;
+  }
+
+  /* ---- Roadmap Column Header ---- */
+  .roadmap-col-header {
+    @apply mb-2 flex items-center gap-2 border-b pb-2 text-xs font-medium text-muted-foreground;
+  }
+
+  /* ---- Filter Pill (sort/filter bar) ----
+     <button class="filter-pill">Most voted</button>
+     <button class="filter-pill filter-active">By MRR</button>
+  */
+  .filter-pill {
+    @apply inline-flex cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors;
+  }
+  .filter-pill:hover {
+    @apply border-border text-foreground;
+  }
+  .filter-active {
+    background-color: var(--mrr-bg);
+    color: var(--mrr-text);
+    border-color: var(--vote-active-border);
+  }
+
+  /* ---- Changelog Timeline Entry ----
+     <article class="changelog-entry">
+       <time>Apr 2, 2026</time>
+       <h3>Feature name</h3>
+       <p>Description</p>
+     </article>
+  */
+  .changelog-entry {
+    @apply relative border-l border-border pb-8 pl-6;
+  }
+  .changelog-entry::before {
+    content: "";
+    @apply absolute top-1 -left-1 size-2 rounded-full;
+    background-color: var(--primary);
+  }
+  .changelog-entry:last-child {
+    @apply border-l-transparent pb-0;
+  }
+
+  /* ---- Empty State ----
+     Centered message for empty boards/roadmaps
+  */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-16 text-center;
+  }
+  .empty-state-icon {
+    @apply mb-4 text-muted-foreground/40;
+  }
+  .empty-state-title {
+    @apply mb-1 text-sm font-medium text-muted-foreground;
+  }
+  .empty-state-description {
+    @apply max-w-[280px] text-xs text-muted-foreground/70;
+  }
+}
+
+/* ---------------------------------------------------------
+   7. UTILITY OVERRIDES & POLISH
+   --------------------------------------------------------- */
+
+@layer utilities {
+  /* Scrollbar styling — thin, warm gray */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 3px;
+  }
+
+  /* Text balance for headings */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Tabular nums — for vote counts, MRR values */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ---------------------------------------------------------
+   8. SELECTION & FOCUS
+   Brand-tinted selection and focus states
+   --------------------------------------------------------- */
+
+::selection {
+  background-color: oklch(0.85 0.08 168 / 0.4);
+  color: inherit;
+}
+
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-ring;
 }
