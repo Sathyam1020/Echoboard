@@ -7,7 +7,12 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "db:generate": "npm run db:generate -w @workspace/db",
+    "db:migrate": "npm run db:migrate -w @workspace/db",
+    "db:push": "npm run db:push -w @workspace/db",
+    "db:studio": "npm run db:studio -w @workspace/db",
+    "auth:generate": "npm run auth:generate -w @workspace/auth"
   },
   "devDependencies": {
     "@workspace/eslint-config": "*",

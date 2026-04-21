@@ -1,0 +1,32 @@
+{
+  "name": "@workspace/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./client": "./src/client.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "lint": "eslint",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.44.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "drizzle-kit": "^0.31.6",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.3"
+  }
+}

@@ -14,6 +14,8 @@ import {
 } from "@workspace/ui/components/sheet"
 import { cn } from "@workspace/ui/lib/utils"
 
+import { AuthNavSlot, AuthNavSlotMobile } from "@/components/nav/auth-nav-slot"
+
 const NAV_LINKS = [
   { href: "#demo", id: "demo", label: "Product" },
   { href: "#pricing", id: "pricing", label: "Pricing" },
@@ -113,15 +115,7 @@ export function Nav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 md:ml-0 md:gap-3">
-          <Link
-            href="/login"
-            className="hidden rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex"
-          >
-            Log in
-          </Link>
-          <Button asChild className="hidden shadow-none md:inline-flex">
-            <Link href="/signup">Start free →</Link>
-          </Button>
+          <AuthNavSlot />
 
           <Sheet>
             <SheetTrigger asChild>
@@ -161,18 +155,11 @@ export function Nav() {
                 })}
               </nav>
 
-              <div className="mt-6 flex flex-col gap-2">
-                <SheetClose asChild>
-                  <Button asChild variant="outline" className="w-full shadow-none">
-                    <Link href="/login">Log in</Link>
-                  </Button>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Button asChild className="w-full shadow-none">
-                    <Link href="/signup">Start free →</Link>
-                  </Button>
-                </SheetClose>
-              </div>
+              <SheetClose asChild>
+                <div>
+                  <AuthNavSlotMobile />
+                </div>
+              </SheetClose>
             </SheetContent>
           </Sheet>
         </div>

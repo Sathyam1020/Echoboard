@@ -1,12 +1,19 @@
+import { db, sql } from "@workspace/db/client"
 import { Router, type Request, type Response } from "express"
 
 export const healthRouter: Router = Router()
 
-healthRouter.get("/", (_req: Request, res: Response) => {
-  // When Neon is wired in, add a lightweight `SELECT 1` here and surface
-  // db status in the payload.
-  res.status(200).json({
-    status: "ok",
+healthRouter.get("/", async (_req: Request, res: Response) => {
+  let dbStatus: "ok" | "error" = "ok"
+  try {
+    await db.execute(sql`SELECT 1`)
+  } catch {
+    dbStatus = "error"
+  }
+
+  res.status(dbStatus === "ok" ? 200 : 503).json({
+    status: dbStatus === "ok" ? "ok" : "degraded",
+    db: dbStatus,
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   })

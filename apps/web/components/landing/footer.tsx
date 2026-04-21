@@ -19,6 +19,10 @@ export function Footer() {
           <span>echoboard</span>
           <span className="text-muted-foreground/50">·</span>
           <span className="font-mono tabular-nums">© 2026</span>
+          <span className="text-muted-foreground/50">·</span>
+          <span>
+            Built in India <span aria-hidden>🇮🇳</span>
+          </span>
         </div>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">

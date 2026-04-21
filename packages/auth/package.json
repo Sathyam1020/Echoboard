@@ -1,0 +1,34 @@
+{
+  "name": "@workspace/auth",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./src/server.ts",
+    "./client": "./src/client.ts",
+    "./env": "./src/env.ts"
+  },
+  "scripts": {
+    "auth:generate": "npx @better-auth/cli generate --config ./src/server.ts --output ../../packages/db/src/schema/auth-schema.ts --yes",
+    "lint": "eslint",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@workspace/db": "*",
+    "better-auth": "^1.5.0"
+  },
+  "devDependencies": {
+    "@better-auth/cli": "^1.4.21",
+    "@types/node": "^25.1.0",
+    "@types/react": "^19.2.10",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^9.39.2",
+    "react": "^19.2.4",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}

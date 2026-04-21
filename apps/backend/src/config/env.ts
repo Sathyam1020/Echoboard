@@ -14,6 +14,14 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
   CORS_ORIGIN: z.string().min(1).default("http://localhost:3000"),
+
+  DATABASE_URL: z.string().url(),
+  BETTER_AUTH_SECRET: z
+    .string()
+    .min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
+  BETTER_AUTH_URL: z.string().url(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)

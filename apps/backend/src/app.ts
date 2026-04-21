@@ -1,3 +1,5 @@
+import { auth } from "@workspace/auth/server"
+import { toNodeHandler } from "better-auth/node"
 import cors from "cors"
 import express, { type Express } from "express"
 import rateLimit from "express-rate-limit"
@@ -23,8 +25,17 @@ export function createApp(): Express {
     cors({
       origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(","),
       credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
     }),
   )
+
+  // Better Auth handler — MUST be mounted before express.json(). Better Auth
+  // parses its own request bodies; a JSON parser above it consumes the stream
+  // and causes hanging requests. Express 5 dropped bare `*`, so the named
+  // wildcard `*splat` is required.
+  app.all("/api/auth/*splat", toNodeHandler(auth))
+
   app.use(express.json({ limit: "1mb" }))
   app.use(express.urlencoded({ extended: true, limit: "1mb" }))
 
@@ -45,6 +56,10 @@ export function createApp(): Express {
       limit: 100,
       standardHeaders: "draft-7",
       legacyHeaders: false,
+      // Better Auth has its own per-endpoint rate limiting on /api/auth/*;
+      // skip the global limiter there to avoid double-counting and to keep
+      // auth throttles coherent across nodes.
+      skip: (req) => req.path.startsWith("/api/auth/"),
     }),
   )
 
