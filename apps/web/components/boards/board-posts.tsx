@@ -1,0 +1,76 @@
+"use client"
+
+import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
+import { Search } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useMemo, useState } from "react"
+
+import { authClient } from "@/lib/auth-client"
+
+import { PostList } from "./post-list"
+import type { PostRow } from "./post-card"
+import { SortPills, type SortOption } from "./sort-pills"
+import { SubmitPostDialog } from "./submit-post-dialog"
+
+export function BoardPosts({
+  boardId,
+  posts,
+}: {
+  boardId: string
+  posts: PostRow[]
+}) {
+  const { data: session } = authClient.useSession()
+  const pathname = usePathname()
+  const signinHref = `/signin?redirectTo=${encodeURIComponent(pathname)}`
+
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState<SortOption>("newest")
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    let arr = posts
+    if (q) {
+      arr = arr.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q),
+      )
+    }
+    return [...arr].sort((a, b) => {
+      const cmp = a.createdAt.localeCompare(b.createdAt)
+      return sort === "newest" ? -cmp : cmp
+    })
+  }, [posts, search, sort])
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search feedback…"
+            className="pl-10"
+          />
+        </div>
+        {session ? (
+          <SubmitPostDialog boardId={boardId} />
+        ) : (
+          <Button asChild>
+            <Link href={signinHref}>Submit</Link>
+          </Button>
+        )}
+      </div>
+
+      <SortPills value={sort} onChange={setSort} />
+
+      <PostList posts={filtered} />
+    </div>
+  )
+}

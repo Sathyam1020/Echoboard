@@ -61,8 +61,19 @@
 
   /* ---- Border / Input / Ring ---- */
   --border: oklch(0.88 0.005 75); /* warm border #D9D7D2 */
+  --border-soft: oklch(0.92 0.004 75); /* softer rule #E7E5DF */
   --input: oklch(0.88 0.005 75);
   --ring: oklch(0.47 0.12 168); /* teal focus ring */
+
+  /* ---- Extra surface + text layers (match design bundle) ---- */
+  --surface-3: oklch(0.965 0.004 75); /* tertiary surface #F5F3EF */
+  --foreground-subtle: oklch(0.68 0.008 75); /* even-muter text #A09E96 */
+
+  /* ---- Primary variants ---- */
+  --primary-hover: oklch(0.42 0.12 168); /* darker teal #0A5945 */
+
+  /* ---- Destructive tint (for confirm modal icon wells, etc.) ---- */
+  --destructive-tint: oklch(0.95 0.02 25); /* light red #F7E9E9 */
 
   /* ---- Sidebar (if using shadcn sidebar) ---- */
   --sidebar: oklch(0.975 0.003 75);
@@ -145,8 +156,16 @@
   --destructive-foreground: oklch(0.93 0.01 25);
 
   --border: oklch(0.26 0.005 75);
+  --border-soft: oklch(0.22 0.005 75);
   --input: oklch(0.26 0.005 75);
   --ring: oklch(0.6 0.14 168);
+
+  --surface-3: oklch(0.14 0.005 75);
+  --foreground-subtle: oklch(0.45 0.006 75);
+
+  --primary-hover: oklch(0.68 0.14 168);
+
+  --destructive-tint: oklch(0.22 0.05 25);
 
   --sidebar: oklch(0.14 0.005 75);
   --sidebar-foreground: oklch(0.93 0.005 75);
@@ -225,8 +244,16 @@
   --color-destructive-foreground: var(--destructive-foreground);
 
   --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-surface-3: var(--surface-3);
+  --color-foreground-subtle: var(--foreground-subtle);
+
+  --color-primary-hover: var(--primary-hover);
+
+  --color-destructive-tint: var(--destructive-tint);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);

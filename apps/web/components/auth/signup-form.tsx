@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
@@ -76,7 +77,7 @@ export function SignupForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+        <p className="text-xs text-muted-foreground">8+ chars, mix it up.</p>
       </div>
 
       {error ? (
@@ -85,18 +86,35 @@ export function SignupForm() {
         </Alert>
       ) : null}
 
-      <Button type="submit" disabled={isPending} className="w-full">
-        {isPending ? "Creating account…" : "Create account"}
+      <Button type="submit" disabled={isPending} className="mt-1 w-full">
+        {isPending ? (
+          "Creating account…"
+        ) : (
+          <>
+            Create account
+            <ArrowRight className="size-4" />
+          </>
+        )}
       </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+      <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+        By signing up you agree to our{" "}
         <Link
-          href="/signin"
+          href="#"
+          aria-disabled="true"
           className="text-foreground underline-offset-4 hover:underline"
         >
-          Sign in
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link
+          href="#"
+          aria-disabled="true"
+          className="text-foreground underline-offset-4 hover:underline"
+        >
+          Privacy Policy
         </Link>
+        .
       </p>
     </form>
   )

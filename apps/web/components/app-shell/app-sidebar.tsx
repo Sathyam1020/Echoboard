@@ -1,0 +1,203 @@
+import { FileTextIcon } from "@workspace/ui/components/file-text"
+import { LayoutGridIcon } from "@workspace/ui/components/layout-grid"
+import { MessageCircleIcon } from "@workspace/ui/components/message-circle"
+import { MessageSquareIcon } from "@workspace/ui/components/message-square"
+import { PlusIcon } from "@workspace/ui/components/plus"
+import { RouteIcon } from "@workspace/ui/components/route"
+import { SettingsIcon } from "@workspace/ui/components/settings"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@workspace/ui/components/sidebar"
+import { TrendingUpIcon } from "@workspace/ui/components/trending-up"
+import { ChevronDown } from "lucide-react"
+import Link from "next/link"
+
+import { SignOutButton } from "@/components/nav/sign-out-button"
+
+import {
+  AnimatedNavItem,
+  AnimatedNavItemDisabled,
+} from "./animated-nav-item"
+
+export type SidebarBoard = {
+  id: string
+  name: string
+  slug: string
+  workspaceSlug: string
+  postCount: number
+}
+
+export type SidebarUser = {
+  name: string
+  email: string
+  image?: string | null
+}
+
+export type SidebarActiveItem =
+  | "dashboard"
+  | "feedback"
+  | "roadmap"
+  | "changelog"
+  | "comments"
+  | "analytics"
+  | "settings"
+  | null
+
+const BOARD_DOT_COLORS = [
+  "var(--status-shipped-dot)",
+  "var(--status-planned-dot)",
+  "var(--status-progress-dot)",
+  "var(--status-review-dot)",
+]
+
+export function AppSidebar({
+  workspaceName,
+  workspacePlan = "Free",
+  workspaceMemberCount = 1,
+  boards,
+  activeItem,
+  user,
+}: {
+  workspaceName: string
+  workspacePlan?: string
+  workspaceMemberCount?: number
+  boards: SidebarBoard[]
+  activeItem: SidebarActiveItem
+  user: SidebarUser
+}) {
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="px-2 pb-0">
+        <div className="flex items-center gap-2.5 rounded-md p-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1">
+          <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-medium text-primary-foreground">
+            E
+          </div>
+          <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+            <div className="truncate text-[13px] font-medium">
+              {workspaceName}
+            </div>
+            <div className="text-[11px] leading-none text-muted-foreground">
+              {workspacePlan} · {workspaceMemberCount}{" "}
+              {workspaceMemberCount === 1 ? "member" : "members"}
+            </div>
+          </div>
+          <ChevronDown
+            className="size-3.5 text-muted-foreground group-data-[collapsible=icon]:hidden"
+            aria-hidden="true"
+          />
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            <AnimatedNavItem
+              icon={LayoutGridIcon}
+              label="Dashboard"
+              href="/dashboard"
+              isActive={activeItem === "dashboard"}
+            />
+            <AnimatedNavItemDisabled
+              icon={MessageSquareIcon}
+              label="Feedback"
+            />
+            <AnimatedNavItemDisabled icon={RouteIcon} label="Roadmap" />
+            <AnimatedNavItemDisabled icon={FileTextIcon} label="Changelog" />
+            <AnimatedNavItemDisabled
+              icon={MessageCircleIcon}
+              label="Comments"
+            />
+            <AnimatedNavItemDisabled
+              icon={TrendingUpIcon}
+              label="Analytics"
+            />
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Boards</SidebarGroupLabel>
+          <SidebarMenu>
+            {boards.map((b, idx) => (
+              <SidebarMenuItem key={b.id}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={`${b.name} · ${b.postCount} posts`}
+                  className="group-data-[collapsible=icon]:justify-center"
+                >
+                  <Link href={`/${b.workspaceSlug}/${b.slug}`}>
+                    <span
+                      aria-hidden="true"
+                      className="size-[9px] shrink-0 rounded-full transition-transform duration-200 ease-out group-hover/menu-button:scale-125"
+                      style={{
+                        background:
+                          BOARD_DOT_COLORS[idx % BOARD_DOT_COLORS.length],
+                      }}
+                    />
+                    <span className="truncate">{b.name}</span>
+                  </Link>
+                </SidebarMenuButton>
+                <SidebarMenuBadge className="font-mono text-[11px] tabular-nums">
+                  {b.postCount}
+                </SidebarMenuBadge>
+              </SidebarMenuItem>
+            ))}
+            <AnimatedNavItemDisabled
+              icon={PlusIcon}
+              label="New board"
+              tooltip="New board · Coming soon"
+              badge={null}
+              size="sm"
+            />
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <AnimatedNavItemDisabled icon={SettingsIcon} label="Settings" />
+        </SidebarMenu>
+
+        <div className="flex items-center gap-2.5 border-t border-sidebar-border px-2 py-2 group-data-[collapsible=icon]:hidden">
+          <UserInitials name={user.name} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12px] font-medium leading-tight">
+              {user.name}
+            </div>
+            <div className="text-[11px] leading-none text-muted-foreground">
+              Admin
+            </div>
+          </div>
+          <SignOutButton iconOnly />
+        </div>
+      </SidebarFooter>
+
+      <SidebarRail />
+    </Sidebar>
+  )
+}
+
+function UserInitials({ name }: { name: string }) {
+  const initials =
+    name
+      .split(" ")
+      .map((part) => part[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?"
+  return (
+    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-[11px] font-medium">
+      {initials}
+    </div>
+  )
+}

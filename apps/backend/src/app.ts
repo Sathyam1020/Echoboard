@@ -63,7 +63,7 @@ export function createApp(): Express {
     }),
   )
 
-  app.use("/", apiRouter)
+  app.use("/api", apiRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

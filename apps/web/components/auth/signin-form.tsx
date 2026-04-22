@@ -72,19 +72,18 @@ export function SigninForm() {
         </Alert>
       ) : null}
 
-      <Button type="submit" disabled={isPending} className="w-full">
-        {isPending ? "Signing in…" : "Sign in"}
+      <Button type="submit" disabled={isPending} className="mt-1 w-full">
+        {isPending ? "Signing in…" : "Log in"}
       </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Link
-          href="/signup"
-          className="text-foreground underline-offset-4 hover:underline"
-        >
-          Sign up
-        </Link>
-      </p>
+      {/* TODO: wire this up when /forgot-password + /reset-password ship */}
+      <Link
+        href="#"
+        aria-disabled="true"
+        className="-mt-1 text-center text-xs text-muted-foreground hover:text-foreground"
+      >
+        Forgot password?
+      </Link>
     </form>
   )
 }

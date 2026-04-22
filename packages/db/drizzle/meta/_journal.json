@@ -8,6 +8,13 @@
       "when": 1776803211739,
       "tag": "0000_chief_the_executioner",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776832828821,
+      "tag": "0001_high_thanos",
+      "breakpoints": true
     }
   ]
 }
