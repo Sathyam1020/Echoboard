@@ -1,15 +1,8 @@
 import { cn } from "@workspace/ui/lib/utils"
 
 import { Avatar } from "./avatar"
-
-export type PostRow = {
-  id: string
-  title: string
-  description: string
-  status: string
-  createdAt: string
-  authorName: string | null
-}
+import type { PostRow } from "./types"
+import { VoteButton } from "./vote-button"
 
 const STATUS_LABEL: Record<string, string> = {
   review: "Under review",
@@ -26,6 +19,11 @@ export function PostCard({ post }: { post: PostRow }) {
 
   return (
     <article className="feedback-card">
+      <VoteButton
+        postId={post.id}
+        initialCount={post.voteCount}
+        initialVoted={post.hasVoted}
+      />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <h3 className="text-sm font-medium leading-snug">{post.title}</h3>
         <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">

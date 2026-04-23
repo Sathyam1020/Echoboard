@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { pgTable, text, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core"
+import { pgTable, primaryKey, text, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core"
 
 import { user } from "./auth-schema.js"
 
@@ -88,13 +88,42 @@ export const boardRelations = relations(board, ({ one, many }) => ({
   posts: many(post),
 }))
 
-export const postRelations = relations(post, ({ one }) => ({
+export const postRelations = relations(post, ({ one, many }) => ({
   board: one(board, {
     fields: [post.boardId],
     references: [board.id],
   }),
   author: one(user, {
     fields: [post.authorId],
+    references: [user.id],
+  }),
+  votes: many(postVote),
+}))
+
+export const postVote = pgTable(
+  "post_vote",
+  {
+    postId: text("post_id")
+      .notNull()
+      .references(() => post.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.postId, table.userId] }),
+    index("post_vote_user_id_idx").on(table.userId),
+  ],
+)
+
+export const postVoteRelations = relations(postVote, ({ one }) => ({
+  post: one(post, {
+    fields: [postVote.postId],
+    references: [post.id],
+  }),
+  user: one(user, {
+    fields: [postVote.userId],
     references: [user.id],
   }),
 }))

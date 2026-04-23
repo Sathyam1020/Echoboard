@@ -2,12 +2,12 @@
 
 import { cn } from "@workspace/ui/lib/utils"
 
-export type SortOption = "newest" | "oldest"
+export type SortOption = "newest" | "oldest" | "votes"
 
 const OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "newest", label: "Newest" },
   { value: "oldest", label: "Oldest" },
-  // When voting lands, unhide: { value: "votes", label: "Most voted" }
+  { value: "votes", label: "Most voted" },
   // When comments land, unhide: { value: "trending", label: "Trending" }
 ]
 

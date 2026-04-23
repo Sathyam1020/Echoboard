@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 
 import { BoardPosts } from "@/components/boards/board-posts"
-import type { PostRow } from "@/components/boards/post-card"
+import type { PostRow } from "@/components/boards/types"
 import { PublicFooter } from "@/components/boards/public-footer"
 import { PublicTopBar } from "@/components/boards/public-top-bar"
 import { ApiError, serverApi } from "@/lib/api"

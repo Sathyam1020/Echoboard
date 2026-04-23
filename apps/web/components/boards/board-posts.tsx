@@ -10,9 +10,9 @@ import { useMemo, useState } from "react"
 import { authClient } from "@/lib/auth-client"
 
 import { PostList } from "./post-list"
-import type { PostRow } from "./post-card"
 import { SortPills, type SortOption } from "./sort-pills"
 import { SubmitPostDialog } from "./submit-post-dialog"
+import type { PostRow } from "./types"
 
 export function BoardPosts({
   boardId,
@@ -39,6 +39,11 @@ export function BoardPosts({
       )
     }
     return [...arr].sort((a, b) => {
+      if (sort === "votes") {
+        const diff = b.voteCount - a.voteCount
+        if (diff !== 0) return diff
+        return b.createdAt.localeCompare(a.createdAt)
+      }
       const cmp = a.createdAt.localeCompare(b.createdAt)
       return sort === "newest" ? -cmp : cmp
     })

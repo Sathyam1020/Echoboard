@@ -1,6 +1,7 @@
 import { MessageSquare } from "lucide-react"
 
-import { PostCard, type PostRow } from "./post-card"
+import { PostCard } from "./post-card"
+import type { PostRow } from "./types"
 
 export function PostList({ posts }: { posts: PostRow[] }) {
   if (posts.length === 0) {

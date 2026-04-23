@@ -1,10 +1,67 @@
-import { and, db, desc, eq } from "@workspace/db/client"
-import { board, post, user, workspace } from "@workspace/db/schema"
+import { auth } from "@workspace/auth/server"
+import { and, db, desc, eq, inArray, sql } from "@workspace/db/client"
+import { board, post, postVote, user, workspace } from "@workspace/db/schema"
+import { fromNodeHeaders } from "better-auth/node"
 import { Router, type Request, type Response } from "express"
 import { z } from "zod"
 
 import { AppError } from "../middleware/error-handler.js"
 import { requireAuth } from "../middleware/require-auth.js"
+
+type PostListRow = {
+  id: string
+  title: string
+  description: string
+  status: string
+  createdAt: Date
+  authorName: string | null
+}
+
+type EnrichedPost = PostListRow & {
+  voteCount: number
+  hasVoted: boolean
+}
+
+async function enrichPostsWithVotes(
+  posts: PostListRow[],
+  userId: string | null,
+): Promise<EnrichedPost[]> {
+  if (posts.length === 0) return []
+  const ids = posts.map((p) => p.id)
+
+  const countRows = await db
+    .select({
+      postId: postVote.postId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(postVote)
+    .where(inArray(postVote.postId, ids))
+    .groupBy(postVote.postId)
+  const counts = new Map<string, number>()
+  for (const r of countRows) counts.set(r.postId, r.count)
+
+  let votedSet = new Set<string>()
+  if (userId) {
+    const votedRows = await db
+      .select({ postId: postVote.postId })
+      .from(postVote)
+      .where(and(eq(postVote.userId, userId), inArray(postVote.postId, ids)))
+    votedSet = new Set(votedRows.map((r) => r.postId))
+  }
+
+  return posts.map((p) => ({
+    ...p,
+    voteCount: counts.get(p.id) ?? 0,
+    hasVoted: votedSet.has(p.id),
+  }))
+}
+
+async function readOptionalUserId(req: Request): Promise<string | null> {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  })
+  return session?.user?.id ?? null
+}
 
 export const boardsRouter: Router = Router()
 
@@ -71,6 +128,9 @@ boardsRouter.get(
       .where(eq(post.boardId, row.board.id))
       .orderBy(desc(post.createdAt))
 
+    const userId = await readOptionalUserId(req)
+    const enriched = await enrichPostsWithVotes(posts, userId)
+
     res.json({
       workspace: {
         id: row.workspace.id,
@@ -78,7 +138,7 @@ boardsRouter.get(
         slug: row.workspace.slug,
       },
       board: row.board,
-      posts,
+      posts: enriched,
     })
   },
 )
@@ -116,7 +176,10 @@ boardsRouter.get(
       .where(eq(post.boardId, b.id))
       .orderBy(desc(post.createdAt))
 
-    res.json({ posts })
+    const userId = await readOptionalUserId(req)
+    const enriched = await enrichPostsWithVotes(posts, userId)
+
+    res.json({ posts: enriched })
   },
 )
 
