@@ -59,6 +59,22 @@ export const api = {
     })
     return parseResponse<T>(res)
   },
+  async patch<T>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    return parseResponse<T>(res)
+  },
+  async delete<T>(path: string): Promise<T> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "DELETE",
+      credentials: "include",
+    })
+    return parseResponse<T>(res)
+  },
 }
 
 // Turbo boots workspaces in parallel, and `tsx watch` restarts the backend on

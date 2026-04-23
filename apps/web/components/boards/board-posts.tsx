@@ -17,9 +17,13 @@ import type { PostRow } from "./types"
 export function BoardPosts({
   boardId,
   posts,
+  workspaceSlug,
+  boardSlug,
 }: {
   boardId: string
   posts: PostRow[]
+  workspaceSlug: string
+  boardSlug: string
 }) {
   const { data: session } = authClient.useSession()
   const pathname = usePathname()
@@ -75,7 +79,11 @@ export function BoardPosts({
 
       <SortPills value={sort} onChange={setSort} />
 
-      <PostList posts={filtered} />
+      <PostList
+        posts={filtered}
+        workspaceSlug={workspaceSlug}
+        boardSlug={boardSlug}
+      />
     </div>
   )
 }

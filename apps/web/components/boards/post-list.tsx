@@ -3,7 +3,15 @@ import { MessageSquare } from "lucide-react"
 import { PostCard } from "./post-card"
 import type { PostRow } from "./types"
 
-export function PostList({ posts }: { posts: PostRow[] }) {
+export function PostList({
+  posts,
+  workspaceSlug,
+  boardSlug,
+}: {
+  posts: PostRow[]
+  workspaceSlug: string
+  boardSlug: string
+}) {
   if (posts.length === 0) {
     return (
       <div className="empty-state">
@@ -22,7 +30,12 @@ export function PostList({ posts }: { posts: PostRow[] }) {
   return (
     <div className="flex flex-col gap-3">
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard
+          key={post.id}
+          post={post}
+          workspaceSlug={workspaceSlug}
+          boardSlug={boardSlug}
+        />
       ))}
     </div>
   )

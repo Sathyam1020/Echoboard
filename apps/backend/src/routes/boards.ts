@@ -1,6 +1,13 @@
 import { auth } from "@workspace/auth/server"
-import { and, db, desc, eq, inArray, sql } from "@workspace/db/client"
-import { board, post, postVote, user, workspace } from "@workspace/db/schema"
+import { and, db, desc, eq, inArray, isNull, sql } from "@workspace/db/client"
+import {
+  board,
+  comment,
+  post,
+  postVote,
+  user,
+  workspace,
+} from "@workspace/db/schema"
 import { fromNodeHeaders } from "better-auth/node"
 import { Router, type Request, type Response } from "express"
 import { z } from "zod"
@@ -17,9 +24,18 @@ type PostListRow = {
   authorName: string | null
 }
 
+type LatestComment = {
+  id: string
+  body: string
+  createdAt: string
+  author: { id: string; name: string } | null
+}
+
 type EnrichedPost = PostListRow & {
   voteCount: number
   hasVoted: boolean
+  commentCount: number
+  latestComment: LatestComment | null
 }
 
 async function enrichPostsWithVotes(
@@ -49,14 +65,67 @@ async function enrichPostsWithVotes(
     votedSet = new Set(votedRows.map((r) => r.postId))
   }
 
+  const commentCountRows = await db
+    .select({
+      postId: comment.postId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(comment)
+    .where(and(inArray(comment.postId, ids), isNull(comment.deletedAt)))
+    .groupBy(comment.postId)
+  const commentCounts = new Map<string, number>()
+  for (const r of commentCountRows) commentCounts.set(r.postId, r.count)
+
+  const latestRes = await db.execute(sql`
+    SELECT DISTINCT ON (c.post_id)
+      c.id AS id,
+      c.post_id AS "postId",
+      c.body AS body,
+      c.created_at AS "createdAt",
+      u.id AS "authorId",
+      u.name AS "authorName"
+    FROM comment c
+    LEFT JOIN "user" u ON u.id = c.author_id
+    WHERE c.post_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
+      AND c.deleted_at IS NULL
+    ORDER BY c.post_id, c.created_at DESC
+  `)
+  const latestMap = new Map<string, LatestComment>()
+  for (const row of latestRes.rows as Array<{
+    id: string
+    postId: string
+    body: string
+    createdAt: Date | string
+    authorId: string | null
+    authorName: string | null
+  }>) {
+    const createdAt =
+      row.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : new Date(row.createdAt).toISOString()
+    latestMap.set(row.postId, {
+      id: row.id,
+      body: row.body,
+      createdAt,
+      author:
+        row.authorId && row.authorName
+          ? { id: row.authorId, name: row.authorName }
+          : null,
+    })
+  }
+
   return posts.map((p) => ({
     ...p,
     voteCount: counts.get(p.id) ?? 0,
     hasVoted: votedSet.has(p.id),
+    commentCount: commentCounts.get(p.id) ?? 0,
+    latestComment: latestMap.get(p.id) ?? null,
   }))
 }
 
-async function readOptionalUserId(req: Request): Promise<string | null> {
+export async function readOptionalUserId(
+  req: Request,
+): Promise<string | null> {
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
   })

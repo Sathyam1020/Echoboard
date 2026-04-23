@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { pgTable, primaryKey, text, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core"
+import { pgTable, primaryKey, text, timestamp, index, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core"
 
 import { user } from "./auth-schema.js"
 
@@ -98,6 +98,7 @@ export const postRelations = relations(post, ({ one, many }) => ({
     references: [user.id],
   }),
   votes: many(postVote),
+  comments: many(comment),
 }))
 
 export const postVote = pgTable(
@@ -125,5 +126,54 @@ export const postVoteRelations = relations(postVote, ({ one }) => ({
   user: one(user, {
     fields: [postVote.userId],
     references: [user.id],
+  }),
+}))
+
+export const comment = pgTable(
+  "comment",
+  {
+    id: text("id").primaryKey(),
+    postId: text("post_id")
+      .notNull()
+      .references(() => post.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    parentId: text("parent_id").references(
+      (): AnyPgColumn => comment.id,
+      { onDelete: "cascade" },
+    ),
+    body: text("body").notNull(),
+    editedAt: timestamp("edited_at"),
+    deletedAt: timestamp("deleted_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("comment_postId_createdAt_idx").on(table.postId, table.createdAt),
+    index("comment_parentId_idx").on(table.parentId),
+    index("comment_authorId_idx").on(table.authorId),
+  ],
+)
+
+export const commentRelations = relations(comment, ({ one, many }) => ({
+  post: one(post, {
+    fields: [comment.postId],
+    references: [post.id],
+  }),
+  author: one(user, {
+    fields: [comment.authorId],
+    references: [user.id],
+  }),
+  parent: one(comment, {
+    fields: [comment.parentId],
+    references: [comment.id],
+    relationName: "commentChildren",
+  }),
+  children: many(comment, {
+    relationName: "commentChildren",
   }),
 }))

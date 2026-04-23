@@ -56,7 +56,12 @@ export default async function BoardPage({
           </p>
         </header>
 
-        <BoardPosts boardId={data.board.id} posts={data.posts} />
+        <BoardPosts
+          boardId={data.board.id}
+          posts={data.posts}
+          workspaceSlug={workspaceSlug}
+          boardSlug={boardSlug}
+        />
       </div>
 
       <PublicFooter />
