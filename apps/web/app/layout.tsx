@@ -1,16 +1,19 @@
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Inter, JetBrains_Mono } from "next/font/google"
 
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils";
 
-const fontSans = Geist({
+// Match cal.com: Inter for body text, JetBrains Mono for data (counts, MRR,
+// dates). Variables keep the same names so existing styles (`font-sans`,
+// `font-mono`) continue to resolve.
+const fontSans = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
 })
 
-const fontMono = Geist_Mono({
+const fontMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ChevronUp } from "lucide-react"
 
+import { StatusIcon } from "@/components/boards/status-icon"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
@@ -122,6 +123,7 @@ function HeroMockup() {
                       `status-${p.status}`,
                     )}
                   >
+                    <StatusIcon status={p.status} size={12} />
                     {p.statusLabel}
                   </span>
                   <span className="mrr-tag" data-mono>

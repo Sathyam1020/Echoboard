@@ -9,214 +9,200 @@
 
 /*
  * =========================================================
- *  CANNY ALTERNATIVE — DESIGN SYSTEM
- *  Tailwind CSS v4 + shadcn/ui
+ *  ECHOBOARD — DESIGN SYSTEM
+ *  Ported from cal.com's coss-ui tokens (AGPL values, used
+ *  as reference points — CSS tokens aren't copyrightable).
  *
- *  Primary: Teal/Green (unclaimed in competitor space)
- *  Neutral: Warm stone (not cool zinc — feels more human)
- *  Philosophy: Linear meets Plausible. Clean utility.
+ *  Palette: pure white + Tailwind neutral scale
+ *  Primary: neutral-800 (near-black). No brand accent on
+ *    CTAs; brand identity = typography + layout.
+ *  Feedback status badges keep their semantic colors
+ *    (purple/blue/amber/teal) since cal has no equivalent.
  * =========================================================
  */
 
-/* ---------------------------------------------------------
-   1. CSS VARIABLES — Light Mode (default)
-   Using OKLCH for perceptual uniformity.
-   shadcn expects background/foreground pairs.
-   --------------------------------------------------------- */
-
 :root {
-  /* ---- Radius ---- */
-  --radius: 0.5rem;
+  /* Radius — cal.com ships 0.625rem (10px). */
+  --radius: 0.625rem;
 
-  /* ---- Base surfaces ---- */
-  --background: oklch(0.985 0.002 75); /* warm off-white #FAFAF8 */
-  --foreground: oklch(0.145 0.005 75); /* near-black warm #1C1C1A */
+  /* Base surfaces — pure white, cool neutral text. */
+  --background: #ffffff;
+  --foreground: var(--color-neutral-800);
 
-  /* ---- Card / Popover ---- */
-  --card: oklch(1 0 0); /* pure white */
-  --card-foreground: oklch(0.145 0.005 75);
+  --card: #ffffff;
+  --card-foreground: var(--color-neutral-800);
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0.005 75);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-neutral-800);
 
-  /* ---- Primary: Teal ---- */
-  --primary: oklch(0.47 0.12 168); /* #0F6E56 — your brand teal */
-  --primary-foreground: oklch(0.985 0.005 168); /* white-ish on teal */
+  /* Primary is neutral-800 (near-black). CTAs are dark, not teal. */
+  --primary: var(--color-neutral-800);
+  --primary-foreground: var(--color-neutral-50);
+  --primary-hover: var(--color-neutral-900);
 
-  /* ---- Secondary: Warm stone ---- */
-  --secondary: oklch(0.94 0.005 75); /* light warm gray #EFEDEA */
-  --secondary-foreground: oklch(0.25 0.005 75); /* dark warm gray */
+  /* Secondary / muted / accent are thin black overlays (cal.com pattern). */
+  --secondary: color-mix(in srgb, black 4%, transparent);
+  --secondary-foreground: var(--color-neutral-800);
 
-  /* ---- Muted: Subtle backgrounds ---- */
-  --muted: oklch(0.94 0.005 75);
-  --muted-foreground: oklch(0.52 0.01 75); /* mid warm gray */
+  --muted: color-mix(in srgb, black 4%, transparent);
+  --muted-foreground: color-mix(in srgb, var(--color-neutral-500) 90%, black);
 
-  /* ---- Accent: Teal tint for hover states ---- */
-  --accent: oklch(0.95 0.03 168); /* very light teal #E1F5EE */
-  --accent-foreground: oklch(0.3 0.08 168); /* dark teal text */
+  --accent: color-mix(in srgb, black 4%, transparent);
+  --accent-foreground: var(--color-neutral-800);
 
-  /* ---- Destructive ---- */
-  --destructive: oklch(0.55 0.2 25); /* red #A32D2D */
-  --destructive-foreground: oklch(0.985 0.01 25);
+  --destructive: var(--color-red-500);
+  --destructive-foreground: var(--color-red-700);
+  --destructive-tint: color-mix(in srgb, var(--color-red-500) 10%, white);
 
-  /* ---- Border / Input / Ring ---- */
-  --border: oklch(0.88 0.005 75); /* warm border #D9D7D2 */
-  --border-soft: oklch(0.92 0.004 75); /* softer rule #E7E5DF */
-  --input: oklch(0.88 0.005 75);
-  --ring: oklch(0.47 0.12 168); /* teal focus ring */
+  --border: color-mix(in srgb, black 8%, transparent);
+  --border-soft: color-mix(in srgb, black 5%, transparent);
+  --input: color-mix(in srgb, black 10%, transparent);
+  --ring: var(--color-neutral-400);
 
-  /* ---- Extra surface + text layers (match design bundle) ---- */
-  --surface-3: oklch(0.965 0.004 75); /* tertiary surface #F5F3EF */
-  --foreground-subtle: oklch(0.68 0.008 75); /* even-muter text #A09E96 */
+  /* Extra surface + faded text (tertiary layer). */
+  --surface-3: var(--color-neutral-50);
+  --foreground-subtle: color-mix(in srgb, var(--color-neutral-400) 90%, black);
 
-  /* ---- Primary variants ---- */
-  --primary-hover: oklch(0.42 0.12 168); /* darker teal #0A5945 */
+  /* Sidebar — pale neutral, foreground slightly muted. */
+  --sidebar: var(--color-neutral-50);
+  --sidebar-foreground: color-mix(
+    in srgb,
+    var(--color-neutral-800) 70%,
+    var(--sidebar)
+  );
+  --sidebar-primary: var(--color-neutral-800);
+  --sidebar-primary-foreground: var(--color-neutral-50);
+  --sidebar-accent: color-mix(in srgb, black 4%, transparent);
+  --sidebar-accent-foreground: var(--color-neutral-800);
+  --sidebar-border: color-mix(in srgb, black 6%, transparent);
+  --sidebar-ring: var(--color-neutral-400);
 
-  /* ---- Destructive tint (for confirm modal icon wells, etc.) ---- */
-  --destructive-tint: oklch(0.95 0.02 25); /* light red #F7E9E9 */
-
-  /* ---- Sidebar (if using shadcn sidebar) ---- */
-  --sidebar: oklch(0.975 0.003 75);
-  --sidebar-foreground: oklch(0.145 0.005 75);
-  --sidebar-primary: oklch(0.47 0.12 168);
-  --sidebar-primary-foreground: oklch(0.985 0.005 168);
-  --sidebar-accent: oklch(0.95 0.03 168);
-  --sidebar-accent-foreground: oklch(0.3 0.08 168);
-  --sidebar-border: oklch(0.9 0.005 75);
-  --sidebar-ring: oklch(0.47 0.12 168);
-
-  /* ---- Chart colors (for recharts / shadcn charts) ---- */
-  --chart-1: oklch(0.47 0.12 168); /* teal primary */
-  --chart-2: oklch(0.55 0.15 250); /* blue */
-  --chart-3: oklch(0.65 0.15 55); /* amber */
-  --chart-4: oklch(0.55 0.18 340); /* pink */
-  --chart-5: oklch(0.5 0.12 300); /* purple */
+  /* Chart palette — cal's default mix. */
+  --chart-1: var(--color-orange-600);
+  --chart-2: var(--color-teal-600);
+  --chart-3: var(--color-cyan-900);
+  --chart-4: var(--color-amber-400);
+  --chart-5: var(--color-amber-500);
 
   /* ============================================
-     CUSTOM: Feedback-tool-specific tokens
+     Feedback-specific semantic colors — unchanged.
+     Review purple / Planned blue / Progress amber
+     / Shipped teal. Works on pure-white bg.
      ============================================ */
+  --status-review-bg: oklch(0.94 0.03 290);
+  --status-review-text: oklch(0.35 0.12 290);
+  --status-review-dot: oklch(0.55 0.18 290);
 
-  /* ---- Status colors ---- */
-  --status-review-bg: oklch(0.94 0.03 290); /* light purple #EEEDFE */
-  --status-review-text: oklch(0.35 0.12 290); /* dark purple #3C3489 */
-  --status-review-dot: oklch(0.45 0.15 290); /* purple dot #534AB7 */
+  --status-planned-bg: oklch(0.94 0.03 240);
+  --status-planned-text: oklch(0.35 0.1 240);
+  --status-planned-dot: oklch(0.55 0.18 240);
 
-  --status-planned-bg: oklch(0.94 0.03 240); /* light blue #E6F1FB */
-  --status-planned-text: oklch(0.35 0.1 240); /* dark blue #0C447C */
-  --status-planned-dot: oklch(0.45 0.13 240); /* blue dot #185FA5 */
+  --status-progress-bg: oklch(0.95 0.05 85);
+  --status-progress-text: oklch(0.32 0.08 55);
+  --status-progress-dot: oklch(0.6 0.17 55);
 
-  --status-progress-bg: oklch(0.95 0.05 85); /* light amber #FAEEDA */
-  --status-progress-text: oklch(0.32 0.08 55); /* dark amber #633806 */
-  --status-progress-dot: oklch(0.55 0.14 65); /* amber dot #BA7517 */
+  --status-shipped-bg: oklch(0.94 0.04 160);
+  --status-shipped-text: oklch(0.28 0.07 160);
+  --status-shipped-dot: oklch(0.55 0.14 160);
 
-  --status-shipped-bg: oklch(0.94 0.04 168); /* light teal #E1F5EE */
-  --status-shipped-text: oklch(0.28 0.07 168); /* dark teal #085041 */
-  --status-shipped-dot: oklch(0.47 0.12 168); /* teal dot #0F6E56 */
+  /* MRR pill (V2 feature; kept in case we ship it later). */
+  --mrr-bg: oklch(0.94 0.04 160);
+  --mrr-text: oklch(0.47 0.12 160);
 
-  /* ---- MRR tag ---- */
-  --mrr-bg: oklch(0.94 0.04 168);
-  --mrr-text: oklch(0.47 0.12 168);
-
-  /* ---- Vote button ---- */
-  --vote-bg: oklch(0.96 0.003 75);
-  --vote-border: oklch(0.88 0.005 75);
-  --vote-text: oklch(0.52 0.01 75);
-  --vote-active-bg: oklch(0.94 0.04 168);
-  --vote-active-border: oklch(0.65 0.12 168);
-  --vote-active-text: oklch(0.4 0.12 168);
+  /* Vote button — muted neutral, active = subtle dark tint. */
+  --vote-bg: var(--color-neutral-50);
+  --vote-border: color-mix(in srgb, black 8%, transparent);
+  --vote-text: color-mix(in srgb, var(--color-neutral-500) 90%, black);
+  --vote-active-bg: color-mix(in srgb, black 6%, transparent);
+  --vote-active-border: color-mix(in srgb, black 16%, transparent);
+  --vote-active-text: var(--color-neutral-800);
 }
-
-/* ---------------------------------------------------------
-   3. CSS VARIABLES — Dark Mode
-   --------------------------------------------------------- */
 
 .dark {
-  --background: oklch(0.12 0.005 75); /* very dark warm #1A1917 */
-  --foreground: oklch(0.93 0.005 75); /* light warm #EDEDEA */
+  --background: color-mix(
+    in srgb,
+    var(--color-neutral-950) 96%,
+    white
+  );
+  --foreground: var(--color-neutral-100);
 
-  --card: oklch(0.16 0.005 75); /* dark card #232220 */
-  --card-foreground: oklch(0.93 0.005 75);
+  --card: color-mix(in srgb, var(--background) 98%, white);
+  --card-foreground: var(--color-neutral-100);
 
-  --popover: oklch(0.16 0.005 75);
-  --popover-foreground: oklch(0.93 0.005 75);
+  --popover: color-mix(in srgb, var(--background) 96%, white);
+  --popover-foreground: var(--color-neutral-100);
 
-  --primary: oklch(0.6 0.14 168); /* brighter teal for dark bg */
-  --primary-foreground: oklch(0.12 0.03 168); /* dark text on bright teal */
+  --primary: var(--color-neutral-100);
+  --primary-foreground: var(--color-neutral-800);
+  --primary-hover: var(--color-neutral-50);
 
-  --secondary: oklch(0.22 0.005 75);
-  --secondary-foreground: oklch(0.88 0.005 75);
+  --secondary: color-mix(in srgb, white 4%, transparent);
+  --secondary-foreground: var(--color-neutral-100);
 
-  --muted: oklch(0.22 0.005 75);
-  --muted-foreground: oklch(0.6 0.008 75);
+  --muted: color-mix(in srgb, white 4%, transparent);
+  --muted-foreground: color-mix(in srgb, var(--color-neutral-500) 90%, white);
 
-  --accent: oklch(0.22 0.04 168);
-  --accent-foreground: oklch(0.8 0.08 168);
+  --accent: color-mix(in srgb, white 4%, transparent);
+  --accent-foreground: var(--color-neutral-100);
 
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.93 0.01 25);
+  --destructive: color-mix(in srgb, var(--color-red-500) 90%, white);
+  --destructive-foreground: var(--color-red-400);
+  --destructive-tint: color-mix(in srgb, var(--color-red-500) 22%, black);
 
-  --border: oklch(0.26 0.005 75);
-  --border-soft: oklch(0.22 0.005 75);
-  --input: oklch(0.26 0.005 75);
-  --ring: oklch(0.6 0.14 168);
+  --border: color-mix(in srgb, white 6%, transparent);
+  --border-soft: color-mix(in srgb, white 4%, transparent);
+  --input: color-mix(in srgb, white 8%, transparent);
+  --ring: var(--color-neutral-500);
 
-  --surface-3: oklch(0.14 0.005 75);
-  --foreground-subtle: oklch(0.45 0.006 75);
+  --surface-3: color-mix(in srgb, var(--background) 96%, white);
+  --foreground-subtle: color-mix(in srgb, var(--color-neutral-500) 85%, white);
 
-  --primary-hover: oklch(0.68 0.14 168);
+  --sidebar: color-mix(in srgb, var(--color-neutral-950) 97%, white);
+  --sidebar-foreground: color-mix(
+    in srgb,
+    var(--color-neutral-100) 64%,
+    var(--sidebar)
+  );
+  --sidebar-primary: var(--color-neutral-100);
+  --sidebar-primary-foreground: var(--color-neutral-800);
+  --sidebar-accent: color-mix(in srgb, white 4%, transparent);
+  --sidebar-accent-foreground: var(--color-neutral-100);
+  --sidebar-border: color-mix(in srgb, white 5%, transparent);
+  --sidebar-ring: var(--color-neutral-400);
 
-  --destructive-tint: oklch(0.22 0.05 25);
+  --chart-1: var(--color-blue-700);
+  --chart-2: var(--color-emerald-500);
+  --chart-3: var(--color-amber-500);
+  --chart-4: var(--color-purple-500);
+  --chart-5: var(--color-rose-500);
 
-  --sidebar: oklch(0.14 0.005 75);
-  --sidebar-foreground: oklch(0.93 0.005 75);
-  --sidebar-primary: oklch(0.6 0.14 168);
-  --sidebar-primary-foreground: oklch(0.12 0.03 168);
-  --sidebar-accent: oklch(0.22 0.04 168);
-  --sidebar-accent-foreground: oklch(0.8 0.08 168);
-  --sidebar-border: oklch(0.26 0.005 75);
-  --sidebar-ring: oklch(0.6 0.14 168);
-
-  --chart-1: oklch(0.6 0.14 168);
-  --chart-2: oklch(0.65 0.15 250);
-  --chart-3: oklch(0.7 0.14 55);
-  --chart-4: oklch(0.65 0.17 340);
-  --chart-5: oklch(0.6 0.12 300);
-
-  /* ---- Status (dark mode) ---- */
+  /* Status colors in dark — less saturated backgrounds. */
   --status-review-bg: oklch(0.22 0.06 290);
-  --status-review-text: oklch(0.8 0.08 290);
-  --status-review-dot: oklch(0.65 0.12 290);
+  --status-review-text: oklch(0.85 0.1 290);
+  --status-review-dot: oklch(0.7 0.16 290);
 
   --status-planned-bg: oklch(0.22 0.05 240);
-  --status-planned-text: oklch(0.78 0.08 240);
-  --status-planned-dot: oklch(0.6 0.12 240);
+  --status-planned-text: oklch(0.82 0.1 240);
+  --status-planned-dot: oklch(0.68 0.14 240);
 
   --status-progress-bg: oklch(0.22 0.05 65);
-  --status-progress-text: oklch(0.8 0.1 65);
-  --status-progress-dot: oklch(0.7 0.14 65);
+  --status-progress-text: oklch(0.85 0.12 65);
+  --status-progress-dot: oklch(0.72 0.15 65);
 
-  --status-shipped-bg: oklch(0.22 0.05 168);
-  --status-shipped-text: oklch(0.78 0.08 168);
-  --status-shipped-dot: oklch(0.6 0.14 168);
+  --status-shipped-bg: oklch(0.22 0.05 160);
+  --status-shipped-text: oklch(0.82 0.1 160);
+  --status-shipped-dot: oklch(0.68 0.14 160);
 
-  /* ---- MRR tag (dark) ---- */
-  --mrr-bg: oklch(0.22 0.05 168);
-  --mrr-text: oklch(0.75 0.1 168);
+  --mrr-bg: oklch(0.22 0.05 160);
+  --mrr-text: oklch(0.8 0.11 160);
 
-  /* ---- Vote button (dark) ---- */
-  --vote-bg: oklch(0.18 0.003 75);
-  --vote-border: oklch(0.28 0.005 75);
-  --vote-text: oklch(0.6 0.008 75);
-  --vote-active-bg: oklch(0.22 0.05 168);
-  --vote-active-border: oklch(0.45 0.1 168);
-  --vote-active-text: oklch(0.75 0.1 168);
+  --vote-bg: color-mix(in srgb, var(--background) 90%, white);
+  --vote-border: color-mix(in srgb, white 8%, transparent);
+  --vote-text: color-mix(in srgb, var(--color-neutral-500) 85%, white);
+  --vote-active-bg: color-mix(in srgb, white 8%, transparent);
+  --vote-active-border: color-mix(in srgb, white 20%, transparent);
+  --vote-active-text: var(--color-neutral-100);
 }
-
-/* ---------------------------------------------------------
-   4. TAILWIND THEME MAPPING
-   Maps CSS variables to Tailwind utility classes.
-   bg-primary, text-foreground, border-border, etc.
-   --------------------------------------------------------- */
 
 @theme inline {
   --color-background: var(--background);
@@ -270,8 +256,6 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* Custom tokens → Tailwind utilities
-     e.g. bg-status-planned-bg, text-mrr-text, etc. */
   --color-status-review-bg: var(--status-review-bg);
   --color-status-review-text: var(--status-review-text);
   --color-status-review-dot: var(--status-review-dot);
@@ -304,15 +288,14 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Fonts */
-  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Font variables — populated by next/font in layout.tsx. */
+  --font-sans:
+    var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
   --font-mono:
-    "Geist Mono", ui-monospace, "Cascadia Code", "Fira Code", monospace;
+    var(--font-jetbrains-mono, "JetBrains Mono"), ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
-
-/* ---------------------------------------------------------
-   5. BASE STYLES
-   --------------------------------------------------------- */
 
 @layer base {
   *,
@@ -325,12 +308,12 @@
     @apply bg-background text-foreground;
     font-feature-settings:
       "rlig" 1,
-      "calt" 1;
+      "calt" 1,
+      "ss01" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Two weights only: 400 (normal) and 500 (medium). Never 600/700. */
   h1,
   h2,
   h3,
@@ -340,75 +323,45 @@
     @apply font-medium tracking-tight;
   }
 
-  /* Monospace for data-heavy elements */
   [data-mono] {
     @apply font-mono tabular-nums;
   }
 }
 
-/* ---------------------------------------------------------
-   6. COMPONENT UTILITIES
-   Feedback-tool-specific components.
-   Use with @apply in React or reference classes directly.
-   --------------------------------------------------------- */
-
 @layer components {
   /* ---- Status Badge ----
-     <span class="status-badge status-planned">Planned</span>
-     Auto-generates the colored dot via ::before
+     Pair the class with a <StatusIcon /> child instead of relying on the
+     old ::before dot. The class handles bg + text colour only.
+     <span class="status-badge status-planned"><Icon/> Planned</span>
   */
   .status-badge {
-    @apply inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-xs font-medium;
-  }
-  .status-badge::before {
-    content: "";
-    @apply block size-1.5 shrink-0 rounded-full;
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium;
   }
   .status-review {
     background-color: var(--status-review-bg);
     color: var(--status-review-text);
   }
-  .status-review::before {
-    background-color: var(--status-review-dot);
-  }
   .status-planned {
     background-color: var(--status-planned-bg);
     color: var(--status-planned-text);
-  }
-  .status-planned::before {
-    background-color: var(--status-planned-dot);
   }
   .status-progress {
     background-color: var(--status-progress-bg);
     color: var(--status-progress-text);
   }
-  .status-progress::before {
-    background-color: var(--status-progress-dot);
-  }
   .status-shipped {
     background-color: var(--status-shipped-bg);
     color: var(--status-shipped-text);
   }
-  .status-shipped::before {
-    background-color: var(--status-shipped-dot);
-  }
 
-  /* ---- MRR Tag ----
-     <span class="mrr-tag">$4,200/mo MRR</span>
-  */
+  /* ---- MRR Tag ---- */
   .mrr-tag {
     @apply inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[11px] font-medium;
     background-color: var(--mrr-bg);
     color: var(--mrr-text);
   }
 
-  /* ---- Vote Button ----
-     <button class="vote-btn">
-       <ChevronUp />
-       <span>47</span>
-     </button>
-     Add .vote-active class when user has voted
-  */
+  /* ---- Vote Button ---- */
   .vote-btn {
     @apply flex cursor-pointer flex-col items-center justify-center rounded-lg text-sm font-medium transition-all duration-150 select-none;
     width: 48px;
@@ -432,15 +385,14 @@
   }
 
   /* ---- Feedback Card ----
-     <div class="feedback-card">
-       <VoteBtn /> <div>title, description, meta</div>
-     </div>
+     Column layout: title+vote row on top, description, meta at bottom.
+     Cards sit on a lightly-tinted page bg so the white surface pops.
   */
   .feedback-card {
-    @apply flex gap-3 rounded-lg border bg-card p-3 transition-colors;
+    @apply flex flex-col gap-2 rounded-xl border bg-card p-4 transition-all;
   }
   .feedback-card:hover {
-    @apply border-border/80 bg-accent/30;
+    @apply border-foreground/15 shadow-[0_1px_2px_rgba(0,0,0,0.04)];
   }
 
   /* ---- Roadmap Column Header ---- */
@@ -448,10 +400,7 @@
     @apply mb-2 flex items-center gap-2 border-b pb-2 text-xs font-medium text-muted-foreground;
   }
 
-  /* ---- Filter Pill (sort/filter bar) ----
-     <button class="filter-pill">Most voted</button>
-     <button class="filter-pill filter-active">By MRR</button>
-  */
+  /* ---- Filter Pill ---- */
   .filter-pill {
     @apply inline-flex cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors;
   }
@@ -459,18 +408,12 @@
     @apply border-border text-foreground;
   }
   .filter-active {
-    background-color: var(--mrr-bg);
-    color: var(--mrr-text);
+    background-color: var(--vote-active-bg);
+    color: var(--vote-active-text);
     border-color: var(--vote-active-border);
   }
 
-  /* ---- Changelog Timeline Entry ----
-     <article class="changelog-entry">
-       <time>Apr 2, 2026</time>
-       <h3>Feature name</h3>
-       <p>Description</p>
-     </article>
-  */
+  /* ---- Changelog Timeline Entry ---- */
   .changelog-entry {
     @apply relative border-l border-border pb-8 pl-6;
   }
@@ -483,9 +426,7 @@
     @apply border-l-transparent pb-0;
   }
 
-  /* ---- Empty State ----
-     Centered message for empty boards/roadmaps
-  */
+  /* ---- Empty State ---- */
   .empty-state {
     @apply flex flex-col items-center justify-center py-16 text-center;
   }
@@ -500,12 +441,7 @@
   }
 }
 
-/* ---------------------------------------------------------
-   7. UTILITY OVERRIDES & POLISH
-   --------------------------------------------------------- */
-
 @layer utilities {
-  /* Scrollbar styling — thin, warm gray */
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
@@ -522,24 +458,18 @@
     border-radius: 3px;
   }
 
-  /* Text balance for headings */
   .text-balance {
     text-wrap: balance;
   }
 
-  /* Tabular nums — for vote counts, MRR values */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
 }
 
-/* ---------------------------------------------------------
-   8. SELECTION & FOCUS
-   Brand-tinted selection and focus states
-   --------------------------------------------------------- */
-
+/* Selection + focus — neutral, matches cal.com. */
 ::selection {
-  background-color: oklch(0.85 0.08 168 / 0.4);
+  background-color: color-mix(in srgb, var(--color-neutral-800) 20%, transparent);
   color: inherit;
 }
 

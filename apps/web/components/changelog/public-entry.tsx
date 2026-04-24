@@ -1,3 +1,4 @@
+import { CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 
 import { MarkdownBody } from "./markdown-body"
@@ -40,12 +41,12 @@ export function PublicEntry({
               <Link
                 key={p.id}
                 href={`/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(p.boardSlug)}/${encodeURIComponent(p.id)}`}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-muted-foreground hover:text-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-muted-foreground hover:text-foreground"
               >
-                <span
+                <CheckCircle2
+                  className="size-3 shrink-0"
+                  style={{ color: "var(--status-shipped-dot)" }}
                   aria-hidden
-                  className="size-1.5 rounded-full"
-                  style={{ backgroundColor: "var(--status-shipped-dot)" }}
                 />
                 {p.title}
               </Link>

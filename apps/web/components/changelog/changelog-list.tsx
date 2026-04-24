@@ -1,3 +1,4 @@
+import { CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 
 import { ChangelogRowActions } from "./changelog-row-actions"
@@ -60,6 +61,11 @@ export function ChangelogList({ entries }: { entries: ChangelogListEntry[] }) {
             <div>
               {published ? (
                 <span className="status-badge status-shipped !text-[11px]">
+                  <CheckCircle2
+                    className="size-3 shrink-0"
+                    style={{ color: "var(--status-shipped-dot)" }}
+                    aria-hidden
+                  />
                   Published
                 </span>
               ) : (

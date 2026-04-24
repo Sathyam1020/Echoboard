@@ -38,7 +38,7 @@ export default async function PostPage({
   )}`
 
   return (
-    <div className="min-h-svh bg-background text-foreground">
+    <div className="min-h-svh bg-[var(--surface-3)] text-foreground">
       <PublicTopBar
         workspaceName={data.post.workspace.name}
         workspaceSlug={data.post.workspace.slug}
@@ -46,19 +46,26 @@ export default async function PostPage({
         boardId={data.post.board.id}
       />
 
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <Link
           href={backHref}
-          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="size-4" aria-hidden />
+          <ArrowLeft className="size-3.5" aria-hidden />
           All feedback
         </Link>
 
+        {/* Hero — the post itself. */}
         <PostHeader post={data.post} />
 
+        {/* Admin-only status changer. Subtle, sits below hero. */}
         {data.post.viewerIsOwner ? (
-          <div className="mt-6">
+          <div className="mt-5 flex flex-col gap-2.5 rounded-xl border border-dashed border-border bg-card/40 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                Admin · change status
+              </span>
+            </div>
             <StatusPicker
               postId={data.post.id}
               initialStatus={data.post.status}
@@ -66,13 +73,14 @@ export default async function PostPage({
           </div>
         ) : null}
 
-        <hr className="my-8 border-border" />
-
-        <CommentList
-          postId={data.post.id}
-          workspaceOwnerId={data.post.workspace.ownerId}
-          initialComments={data.comments}
-        />
+        {/* Comments section. */}
+        <div className="mt-10">
+          <CommentList
+            postId={data.post.id}
+            workspaceOwnerId={data.post.workspace.ownerId}
+            initialComments={data.comments}
+          />
+        </div>
       </div>
 
       <PublicFooter />

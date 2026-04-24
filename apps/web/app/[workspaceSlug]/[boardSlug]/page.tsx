@@ -37,7 +37,7 @@ export default async function BoardPage({
   }
 
   return (
-    <div className="min-h-svh bg-background text-foreground">
+    <div className="min-h-svh bg-[var(--surface-3)] text-foreground">
       <PublicTopBar
         workspaceName={data.workspace.name}
         workspaceSlug={data.workspace.slug}

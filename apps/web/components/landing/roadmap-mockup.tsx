@@ -1,5 +1,6 @@
 import { ChevronUp } from "lucide-react"
 
+import { StatusIcon } from "@/components/boards/status-icon"
 import { cn } from "@workspace/ui/lib/utils"
 
 const ROADMAP_COLS: {
@@ -41,6 +42,7 @@ export function RoadmapMockup() {
         <div key={col.status}>
           <div className="roadmap-col-header">
             <span className={cn("status-badge", `status-${col.status}`)}>
+              <StatusIcon status={col.status} size={12} />
               {col.label}
             </span>
             <span className="ml-auto font-mono text-[11px] tabular-nums">

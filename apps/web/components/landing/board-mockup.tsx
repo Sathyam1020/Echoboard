@@ -1,5 +1,6 @@
 import { ChevronUp, MessageSquare } from "lucide-react"
 
+import { StatusIcon } from "@/components/boards/status-icon"
 import { cn } from "@workspace/ui/lib/utils"
 
 const BOARD_POSTS = [
@@ -92,6 +93,7 @@ export function BoardMockup() {
                     `status-${p.status}`,
                   )}
                 >
+                  <StatusIcon status={p.status} size={12} />
                   {p.statusLabel}
                 </span>
                 <span className="mrr-tag" data-mono>

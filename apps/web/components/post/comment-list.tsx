@@ -40,6 +40,7 @@ export function CommentList({
   const [comments, setComments] = useState<CommentRow[]>(initialComments)
 
   const tree = useMemo(() => buildTree(comments), [comments])
+  const liveCount = comments.filter((c) => !c.deletedAt).length
 
   const addComment = useCallback((c: CommentRow) => {
     setComments((prev) => [...prev, c])
@@ -51,22 +52,28 @@ export function CommentList({
 
   return (
     <section className="flex flex-col gap-6">
-      <div>
-        <h2 className="mb-3 text-sm font-medium">
+      <header className="flex items-baseline justify-between">
+        <h2 className="text-[17px] font-medium -tracking-[0.01em]">
           Comments
-          <span className="ml-2 font-mono tabular-nums text-muted-foreground">
-            {comments.filter((c) => !c.deletedAt).length}
+          <span className="ml-2 font-mono text-[14px] tabular-nums text-muted-foreground">
+            {liveCount}
           </span>
         </h2>
-        <CommentForm mode="top" postId={postId} onSuccess={addComment} />
-      </div>
+      </header>
+
+      <CommentForm mode="top" postId={postId} onSuccess={addComment} />
 
       {tree.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">
-          No comments yet. Be the first to share your thoughts.
-        </p>
+        <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
+          <p className="text-[13.5px] font-medium text-foreground">
+            No comments yet
+          </p>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            Be the first to share your thoughts.
+          </p>
+        </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {tree.map((node) => (
             <CommentItem
               key={node.id}

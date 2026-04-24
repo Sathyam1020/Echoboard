@@ -55,6 +55,7 @@ export function CommentItem({
   const { data: session } = authClient.useSession()
   const userId = session?.user?.id ?? null
   const isTombstoned = Boolean(node.deletedAt)
+  const isOwner = node.author?.role === "owner"
 
   const canMutate =
     !isTombstoned &&
@@ -87,35 +88,46 @@ export function CommentItem({
     })
   }
 
+  // Top-level comments get the card wrapper for clear visual anchoring.
+  // Nested replies flow inside their parent card connected by the thread
+  // bar — so depth > 0 drops the card shell.
+  const wrapInCard = depth === 0
+  const contentClasses = cn(
+    "group/comment flex gap-3",
+    wrapInCard && "rounded-xl border border-border bg-card p-4 sm:p-5",
+  )
+
   return (
-    <article className="flex gap-3">
+    <article className={contentClasses}>
       <div className="shrink-0 pt-0.5">
         <Avatar name={node.author?.name ?? "Deleted"} size={32} />
       </div>
 
       <div className="min-w-0 flex-1">
         <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-[13px] font-medium text-foreground">
+          <span className="text-[13.5px] font-medium text-foreground">
             {node.author?.name ?? "Deleted user"}
           </span>
-          {node.author?.role === "owner" ? (
-            <span className="status-badge status-shipped !text-[10px]">
+          {isOwner ? (
+            <span className="inline-flex items-center rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-medium tracking-wider text-primary-foreground">
               TEAM
             </span>
           ) : null}
           <span
-            className="font-mono text-[11px] text-muted-foreground tabular-nums"
+            className="font-mono text-[11.5px] text-muted-foreground tabular-nums"
             title={new Date(node.createdAt).toLocaleString()}
           >
-            {formatRelativeTime(node.createdAt)}
+            · {formatRelativeTime(node.createdAt)}
           </span>
           {node.editedAt && !isTombstoned ? (
-            <span className="text-[11px] text-muted-foreground">(edited)</span>
+            <span className="text-[11px] text-muted-foreground/80">
+              (edited)
+            </span>
           ) : null}
         </header>
 
         {editing ? (
-          <div className="mt-2">
+          <div className="mt-2.5">
             <CommentForm
               mode="edit"
               postId={postId}
@@ -131,7 +143,7 @@ export function CommentItem({
         ) : (
           <p
             className={cn(
-              "mt-1.5 text-[13.5px] leading-relaxed break-words whitespace-pre-wrap text-foreground",
+              "mt-2 break-words whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground/90",
               isTombstoned && "text-muted-foreground italic",
             )}
           >
@@ -140,18 +152,18 @@ export function CommentItem({
         )}
 
         {deleteError ? (
-          <p className="mt-1 text-[12px] text-destructive">{deleteError}</p>
+          <p className="mt-1.5 text-[12px] text-destructive">{deleteError}</p>
         ) : null}
 
         {!isTombstoned && !editing ? (
-          <div className="mt-2 -ml-2 flex items-center gap-0.5">
+          <div className="mt-2.5 -ml-2 flex items-center gap-0.5 text-muted-foreground transition-opacity group-hover/comment:text-foreground/80">
             {userId ? (
               <Button
                 type="button"
                 size="xs"
                 variant="ghost"
                 onClick={() => setReplying((r) => !r)}
-                className="text-muted-foreground hover:text-foreground"
+                className="h-7 px-2 text-[12px] font-normal hover:text-foreground"
               >
                 Reply
               </Button>
@@ -163,7 +175,7 @@ export function CommentItem({
                   size="xs"
                   variant="ghost"
                   onClick={() => setEditing(true)}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="h-7 px-2 text-[12px] font-normal hover:text-foreground"
                 >
                   Edit
                 </Button>
@@ -174,7 +186,7 @@ export function CommentItem({
                       size="xs"
                       variant="ghost"
                       disabled={deletePending}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="h-7 px-2 text-[12px] font-normal hover:text-destructive"
                     >
                       {deletePending ? "Deleting…" : "Delete"}
                     </Button>
@@ -207,7 +219,7 @@ export function CommentItem({
                 size="xs"
                 variant="ghost"
                 onClick={() => setCollapsed((c) => !c)}
-                className="text-muted-foreground hover:text-foreground"
+                className="h-7 px-2 text-[12px] font-normal hover:text-foreground"
               >
                 {collapsed
                   ? `Show ${hiddenCount} ${hiddenCount === 1 ? "reply" : "replies"}`
@@ -238,7 +250,7 @@ export function CommentItem({
               type="button"
               aria-label="Collapse thread"
               onClick={() => setCollapsed(true)}
-              className="w-0.5 shrink-0 cursor-pointer rounded-full bg-border transition-colors hover:bg-foreground/60 focus-visible:bg-foreground/60 focus-visible:outline-none"
+              className="w-[2px] shrink-0 cursor-pointer rounded-full bg-border transition-colors hover:bg-foreground/50 focus-visible:bg-foreground/50 focus-visible:outline-none"
             />
             <div className="min-w-0 flex-1 space-y-5">
               {node.children.map((child) => (

@@ -48,7 +48,7 @@ export default async function PublicChangelogPage({
   }
 
   return (
-    <div className="min-h-svh bg-background text-foreground">
+    <div className="min-h-svh bg-[var(--surface-3)] text-foreground">
       <PublicTopBar
         workspaceName={board.workspace.name}
         workspaceSlug={board.workspace.slug}

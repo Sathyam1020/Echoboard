@@ -1,5 +1,6 @@
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { CheckCircle2 } from "lucide-react"
 
 const CHANGELOG_ENTRIES = [
   {
@@ -30,6 +31,11 @@ export function ChangelogMockup() {
                 {e.date}
               </time>
               <span className="status-badge status-shipped !text-[11px]">
+                <CheckCircle2
+                  className="size-3 shrink-0"
+                  style={{ color: "var(--status-shipped-dot)" }}
+                  aria-hidden
+                />
                 Shipped
               </span>
             </div>
