@@ -1,0 +1,436 @@
+import {
+  and,
+  db,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  or,
+  sql,
+} from "@workspace/db/client"
+import {
+  board,
+  changelogEntry,
+  changelogPost,
+  post,
+  workspace,
+} from "@workspace/db/schema"
+import { Router, type Request, type Response } from "express"
+import { z } from "zod"
+
+import { AppError } from "../middleware/error-handler.js"
+import { requireAuth } from "../middleware/require-auth.js"
+
+export const changelogRouter: Router = Router()
+
+async function loadOwnedEntry(entryId: string, userId: string) {
+  const [row] = await db
+    .select({
+      entry: changelogEntry,
+      workspaceOwnerId: workspace.ownerId,
+    })
+    .from(changelogEntry)
+    .innerJoin(workspace, eq(changelogEntry.workspaceId, workspace.id))
+    .where(eq(changelogEntry.id, entryId))
+
+  if (!row) {
+    throw new AppError("Changelog entry not found", {
+      status: 404,
+      code: "ENTRY_NOT_FOUND",
+    })
+  }
+  if (row.workspaceOwnerId !== userId) {
+    throw new AppError("Only workspace owner can manage this entry", {
+      status: 403,
+      code: "FORBIDDEN",
+    })
+  }
+  return row
+}
+
+async function loadFirstOwnedWorkspace(userId: string) {
+  const [ws] = await db
+    .select()
+    .from(workspace)
+    .where(eq(workspace.ownerId, userId))
+    .orderBy(workspace.createdAt)
+  if (!ws) {
+    throw new AppError("No workspace found for this user", {
+      status: 404,
+      code: "WORKSPACE_NOT_FOUND",
+    })
+  }
+  return ws
+}
+
+function serializeEntry(e: typeof changelogEntry.$inferSelect) {
+  return {
+    id: e.id,
+    title: e.title,
+    body: e.body,
+    publishedAt: e.publishedAt?.toISOString() ?? null,
+    createdAt: e.createdAt.toISOString(),
+    updatedAt: e.updatedAt.toISOString(),
+    authorId: e.authorId,
+    workspaceId: e.workspaceId,
+  }
+}
+
+// GET /api/changelog — admin list for the signed-in user's workspace.
+changelogRouter.get("/", requireAuth, async (_req: Request, res: Response) => {
+  const session = res.locals.session!
+  const ws = await loadFirstOwnedWorkspace(session.user.id)
+
+  const entries = await db
+    .select()
+    .from(changelogEntry)
+    .where(eq(changelogEntry.workspaceId, ws.id))
+    .orderBy(
+      sql`COALESCE(${changelogEntry.publishedAt}, ${changelogEntry.createdAt}) DESC`,
+    )
+
+  const ids = entries.map((e) => e.id)
+  const linkedCounts = new Map<string, number>()
+  if (ids.length > 0) {
+    const rows = await db
+      .select({
+        entryId: changelogPost.changelogEntryId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(changelogPost)
+      .where(inArray(changelogPost.changelogEntryId, ids))
+      .groupBy(changelogPost.changelogEntryId)
+    for (const r of rows) linkedCounts.set(r.entryId, r.count)
+  }
+
+  res.json({
+    entries: entries.map((e) => ({
+      ...serializeEntry(e),
+      linkedPostCount: linkedCounts.get(e.id) ?? 0,
+    })),
+  })
+})
+
+// GET /api/changelog/public/:workspaceSlug — published entries for public view.
+changelogRouter.get(
+  "/public/:workspaceSlug",
+  async (req: Request, res: Response) => {
+    const wsSlug = req.params.workspaceSlug
+    if (typeof wsSlug !== "string" || !wsSlug) {
+      throw new AppError("Invalid workspace slug", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const [ws] = await db
+      .select()
+      .from(workspace)
+      .where(eq(workspace.slug, wsSlug))
+    if (!ws) {
+      throw new AppError("Workspace not found", {
+        status: 404,
+        code: "WORKSPACE_NOT_FOUND",
+      })
+    }
+
+    const [firstBoard] = await db
+      .select({ id: board.id, name: board.name, slug: board.slug })
+      .from(board)
+      .where(eq(board.workspaceId, ws.id))
+      .orderBy(board.createdAt)
+      .limit(1)
+
+    const entries = await db
+      .select()
+      .from(changelogEntry)
+      .where(
+        and(
+          eq(changelogEntry.workspaceId, ws.id),
+          isNotNull(changelogEntry.publishedAt),
+        ),
+      )
+      .orderBy(desc(changelogEntry.publishedAt))
+
+    const ids = entries.map((e) => e.id)
+    const linkedMap = new Map<
+      string,
+      Array<{ id: string; title: string; boardSlug: string }>
+    >()
+    if (ids.length > 0) {
+      const rows = await db
+        .select({
+          entryId: changelogPost.changelogEntryId,
+          postId: post.id,
+          title: post.title,
+          boardSlug: board.slug,
+        })
+        .from(changelogPost)
+        .innerJoin(post, eq(changelogPost.postId, post.id))
+        .innerJoin(board, eq(post.boardId, board.id))
+        .where(inArray(changelogPost.changelogEntryId, ids))
+      for (const r of rows) {
+        const list = linkedMap.get(r.entryId) ?? []
+        list.push({ id: r.postId, title: r.title, boardSlug: r.boardSlug })
+        linkedMap.set(r.entryId, list)
+      }
+    }
+
+    res.json({
+      workspace: { id: ws.id, name: ws.name, slug: ws.slug },
+      firstBoard: firstBoard ?? null,
+      entries: entries.map((e) => ({
+        ...serializeEntry(e),
+        linkedPosts: linkedMap.get(e.id) ?? [],
+      })),
+    })
+  },
+)
+
+// GET /api/changelog/:id — admin single entry.
+changelogRouter.get(
+  "/:id",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const id = req.params.id
+    if (typeof id !== "string" || !id) {
+      throw new AppError("Invalid id", { status: 400, code: "VALIDATION_ERROR" })
+    }
+    const session = res.locals.session!
+    const row = await loadOwnedEntry(id, session.user.id)
+
+    const linked = await db
+      .select({
+        id: post.id,
+        title: post.title,
+        boardName: board.name,
+        boardSlug: board.slug,
+      })
+      .from(changelogPost)
+      .innerJoin(post, eq(changelogPost.postId, post.id))
+      .innerJoin(board, eq(post.boardId, board.id))
+      .where(eq(changelogPost.changelogEntryId, id))
+
+    res.json({
+      entry: { ...serializeEntry(row.entry), linkedPosts: linked },
+    })
+  },
+)
+
+const createEntryBody = z.object({
+  title: z.string().trim().min(3).max(200),
+  body: z.string().trim().min(1).max(20_000),
+  postIds: z.array(z.string().min(1)).optional(),
+})
+
+// POST /api/changelog — create (draft by default).
+changelogRouter.post("/", requireAuth, async (req: Request, res: Response) => {
+  const parsed = createEntryBody.safeParse(req.body)
+  if (!parsed.success) {
+    throw new AppError(parsed.error.issues[0]?.message ?? "Invalid input", {
+      status: 400,
+      code: "VALIDATION_ERROR",
+    })
+  }
+
+  const session = res.locals.session!
+  const ws = await loadFirstOwnedWorkspace(session.user.id)
+  const id = crypto.randomUUID()
+
+  await db.insert(changelogEntry).values({
+    id,
+    workspaceId: ws.id,
+    authorId: session.user.id,
+    title: parsed.data.title,
+    body: parsed.data.body,
+  })
+
+  await linkPostsIfProvided(id, ws.id, parsed.data.postIds)
+
+  const [row] = await db
+    .select()
+    .from(changelogEntry)
+    .where(eq(changelogEntry.id, id))
+  res.status(201).json({ entry: serializeEntry(row!) })
+})
+
+async function linkPostsIfProvided(
+  entryId: string,
+  workspaceId: string,
+  postIds: string[] | undefined,
+) {
+  if (!postIds) return
+  const unique = [...new Set(postIds)]
+
+  if (unique.length > 0) {
+    const valid = await db
+      .select({ id: post.id })
+      .from(post)
+      .innerJoin(board, eq(post.boardId, board.id))
+      .where(
+        and(inArray(post.id, unique), eq(board.workspaceId, workspaceId)),
+      )
+    const validSet = new Set(valid.map((v) => v.id))
+    if (validSet.size !== unique.length) {
+      throw new AppError("One or more posts do not belong to this workspace", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+  }
+
+  await db
+    .delete(changelogPost)
+    .where(eq(changelogPost.changelogEntryId, entryId))
+  if (unique.length > 0) {
+    await db.insert(changelogPost).values(
+      unique.map((postId) => ({
+        changelogEntryId: entryId,
+        postId,
+      })),
+    )
+  }
+}
+
+const updateEntryBody = z
+  .object({
+    title: z.string().trim().min(3).max(200).optional(),
+    body: z.string().trim().min(1).max(20_000).optional(),
+    postIds: z.array(z.string().min(1)).optional(),
+  })
+  .refine(
+    (v) =>
+      v.title !== undefined ||
+      v.body !== undefined ||
+      v.postIds !== undefined,
+    { message: "Provide at least one field" },
+  )
+
+// PATCH /api/changelog/:id — update.
+changelogRouter.patch(
+  "/:id",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const id = req.params.id
+    if (typeof id !== "string" || !id) {
+      throw new AppError("Invalid id", { status: 400, code: "VALIDATION_ERROR" })
+    }
+    const parsed = updateEntryBody.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError(parsed.error.issues[0]?.message ?? "Invalid input", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const session = res.locals.session!
+    const row = await loadOwnedEntry(id, session.user.id)
+
+    const patch: Record<string, unknown> = { updatedAt: sql`now()` }
+    if (parsed.data.title !== undefined) patch.title = parsed.data.title
+    if (parsed.data.body !== undefined) patch.body = parsed.data.body
+
+    if (Object.keys(patch).length > 1) {
+      await db
+        .update(changelogEntry)
+        .set(patch)
+        .where(eq(changelogEntry.id, id))
+    }
+
+    await linkPostsIfProvided(id, row.entry.workspaceId, parsed.data.postIds)
+
+    const [fresh] = await db
+      .select()
+      .from(changelogEntry)
+      .where(eq(changelogEntry.id, id))
+    res.json({ entry: serializeEntry(fresh!) })
+  },
+)
+
+const publishBody = z.object({ published: z.boolean() })
+
+// PATCH /api/changelog/:id/publish — toggle publish state.
+changelogRouter.patch(
+  "/:id/publish",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const id = req.params.id
+    if (typeof id !== "string" || !id) {
+      throw new AppError("Invalid id", { status: 400, code: "VALIDATION_ERROR" })
+    }
+    const parsed = publishBody.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError(parsed.error.issues[0]?.message ?? "Invalid input", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const session = res.locals.session!
+    await loadOwnedEntry(id, session.user.id)
+
+    const [updated] = await db
+      .update(changelogEntry)
+      .set({
+        publishedAt: parsed.data.published ? sql`now()` : null,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(changelogEntry.id, id))
+      .returning()
+    res.json({ entry: serializeEntry(updated!) })
+  },
+)
+
+// DELETE /api/changelog/:id.
+changelogRouter.delete(
+  "/:id",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const id = req.params.id
+    if (typeof id !== "string" || !id) {
+      throw new AppError("Invalid id", { status: 400, code: "VALIDATION_ERROR" })
+    }
+    const session = res.locals.session!
+    await loadOwnedEntry(id, session.user.id)
+    await db.delete(changelogEntry).where(eq(changelogEntry.id, id))
+    res.json({ ok: true })
+  },
+)
+
+// GET /api/changelog/helpers/shipped-posts?q= — editor picker.
+changelogRouter.get(
+  "/helpers/shipped-posts",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const session = res.locals.session!
+    const ws = await loadFirstOwnedWorkspace(session.user.id)
+    const rawQ = typeof req.query.q === "string" ? req.query.q.trim() : ""
+    const q = rawQ.length > 0 ? `%${rawQ}%` : null
+
+    const rows = await db
+      .select({
+        id: post.id,
+        title: post.title,
+        description: post.description,
+        boardName: board.name,
+        boardSlug: board.slug,
+        voteCount: sql<number>`(SELECT count(*)::int FROM post_vote pv WHERE pv.post_id = ${post.id})`,
+      })
+      .from(post)
+      .innerJoin(board, eq(post.boardId, board.id))
+      .where(
+        and(
+          eq(board.workspaceId, ws.id),
+          eq(post.status, "shipped"),
+          q
+            ? or(ilike(post.title, q), ilike(post.description, q))!
+            : sql`true`,
+        ),
+      )
+      .orderBy(desc(post.updatedAt))
+      .limit(50)
+
+    res.json({ posts: rows })
+  },
+)

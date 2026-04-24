@@ -24,10 +24,7 @@ import Link from "next/link"
 
 import { SignOutButton } from "@/components/nav/sign-out-button"
 
-import {
-  AnimatedNavItem,
-  AnimatedNavItemDisabled,
-} from "./animated-nav-item"
+import { AnimatedNavItem, AnimatedNavItemDisabled } from "./animated-nav-item"
 
 export type SidebarBoard = {
   id: string
@@ -119,15 +116,13 @@ export function AppSidebar({
               href="/dashboard/roadmap"
               isActive={activeItem === "roadmap"}
             />
-            <AnimatedNavItemDisabled icon={FileTextIcon} label="Changelog" />
-            <AnimatedNavItemDisabled
-              icon={MessageCircleIcon}
-              label="Comments"
+            <AnimatedNavItem
+              icon={FileTextIcon}
+              label="Changelog"
+              href="/dashboard/changelog"
+              isActive={activeItem === "changelog"}
             />
-            <AnimatedNavItemDisabled
-              icon={TrendingUpIcon}
-              label="Analytics"
-            />
+            <AnimatedNavItemDisabled icon={TrendingUpIcon} label="Analytics" />
           </SidebarMenu>
         </SidebarGroup>
 
@@ -177,7 +172,7 @@ export function AppSidebar({
         <div className="flex items-center gap-2.5 border-t border-sidebar-border px-2 py-2 group-data-[collapsible=icon]:hidden">
           <UserInitials name={user.name} />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium leading-tight">
+            <div className="truncate text-[12px] leading-tight font-medium">
               {user.name}
             </div>
             <div className="text-[11px] leading-none text-muted-foreground">

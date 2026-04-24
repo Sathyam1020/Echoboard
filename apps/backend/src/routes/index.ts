@@ -1,6 +1,7 @@
 import { Router } from "express"
 
 import { boardsRouter } from "./boards.js"
+import { changelogRouter } from "./changelog.js"
 import { commentsRouter } from "./comments.js"
 import { dashboardRouter } from "./dashboard.js"
 import { healthRouter } from "./health.js"
@@ -15,3 +16,4 @@ apiRouter.use("/boards", boardsRouter)
 apiRouter.use("/posts", postsRouter)
 apiRouter.use("/comments", commentsRouter)
 apiRouter.use("/dashboard", dashboardRouter)
+apiRouter.use("/changelog", changelogRouter)

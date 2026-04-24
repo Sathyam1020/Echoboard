@@ -33,7 +33,7 @@ export function PublicTopBar({
   const tabs: Array<{ id: TabId; label: string; href?: string; soon?: boolean }> = [
     { id: "feedback", label: "Feedback", href: boardHref },
     { id: "roadmap", label: "Roadmap", href: `${boardHref}/roadmap` },
-    { id: "changelog", label: "Changelog", soon: true },
+    { id: "changelog", label: "Changelog", href: `${boardHref}/changelog` },
   ]
 
   return (

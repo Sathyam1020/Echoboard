@@ -183,3 +183,74 @@ export const commentRelations = relations(comment, ({ one, many }) => ({
     relationName: "commentChildren",
   }),
 }))
+
+export const changelogEntry = pgTable(
+  "changelog_entry",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    publishedAt: timestamp("published_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("changelog_entry_workspaceId_idx").on(table.workspaceId),
+    index("changelog_entry_workspaceId_publishedAt_idx").on(
+      table.workspaceId,
+      table.publishedAt,
+    ),
+  ],
+)
+
+export const changelogPost = pgTable(
+  "changelog_post",
+  {
+    changelogEntryId: text("changelog_entry_id")
+      .notNull()
+      .references(() => changelogEntry.id, { onDelete: "cascade" }),
+    postId: text("post_id")
+      .notNull()
+      .references(() => post.id, { onDelete: "cascade" }),
+    addedAt: timestamp("added_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.changelogEntryId, table.postId] }),
+    index("changelog_post_postId_idx").on(table.postId),
+  ],
+)
+
+export const changelogEntryRelations = relations(
+  changelogEntry,
+  ({ one, many }) => ({
+    workspace: one(workspace, {
+      fields: [changelogEntry.workspaceId],
+      references: [workspace.id],
+    }),
+    author: one(user, {
+      fields: [changelogEntry.authorId],
+      references: [user.id],
+    }),
+    posts: many(changelogPost),
+  }),
+)
+
+export const changelogPostRelations = relations(changelogPost, ({ one }) => ({
+  entry: one(changelogEntry, {
+    fields: [changelogPost.changelogEntryId],
+    references: [changelogEntry.id],
+  }),
+  post: one(post, {
+    fields: [changelogPost.postId],
+    references: [post.id],
+  }),
+}))

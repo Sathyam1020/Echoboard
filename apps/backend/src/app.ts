@@ -50,10 +50,14 @@ export function createApp(): Express {
     }),
   )
 
+  // Dev SSR fans out to multiple API calls per page render and hot-reload
+  // multiplies that — 100/15min gets burned in a minute of browser refreshes.
+  // Keep the limiter strict in prod; loosen it for local development.
+  const isProd = env.NODE_ENV === "production"
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      limit: 100,
+      limit: isProd ? 100 : 10_000,
       standardHeaders: "draft-7",
       legacyHeaders: false,
       // Better Auth has its own per-endpoint rate limiting on /api/auth/*;
