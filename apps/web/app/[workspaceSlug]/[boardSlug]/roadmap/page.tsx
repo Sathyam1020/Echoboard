@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation"
 
-import { BoardPosts } from "@/components/boards/board-posts"
-import type { PostRow } from "@/components/boards/types"
 import { PublicFooter } from "@/components/boards/public-footer"
 import { PublicTopBar } from "@/components/boards/public-top-bar"
+import type { PostRow } from "@/components/boards/types"
+import { PublicRoadmap } from "@/components/roadmap/public-roadmap"
 import { ApiError, serverApi } from "@/lib/api"
 
 type BoardPageData = {
@@ -17,7 +17,7 @@ type BoardPageData = {
   posts: PostRow[]
 }
 
-export default async function BoardPage({
+export default async function PublicRoadmapPage({
   params,
 }: {
   params: Promise<{ workspaceSlug: string; boardSlug: string }>
@@ -43,24 +43,18 @@ export default async function BoardPage({
         workspaceSlug={data.workspace.slug}
         boardSlug={data.board.slug}
         boardId={data.board.id}
-        activeTab="feedback"
+        activeTab="roadmap"
       />
 
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-5xl px-6 py-10">
         <header className="mb-7">
-          <h1 className="text-2xl font-medium -tracking-[0.02em]">
-            {data.board.name === "Feature Requests"
-              ? "What should we build next?"
-              : data.board.name}
-          </h1>
+          <h1 className="text-2xl font-medium -tracking-[0.02em]">Roadmap</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Vote on ideas, submit your own, or comment on what&apos;s important
-            to you.
+            What&apos;s planned, in progress, and recently shipped.
           </p>
         </header>
 
-        <BoardPosts
-          boardId={data.board.id}
+        <PublicRoadmap
           posts={data.posts}
           workspaceSlug={workspaceSlug}
           boardSlug={boardSlug}

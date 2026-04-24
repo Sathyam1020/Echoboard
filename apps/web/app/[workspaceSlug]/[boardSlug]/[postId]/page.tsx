@@ -41,6 +41,8 @@ export default async function PostPage({
     <div className="min-h-svh bg-background text-foreground">
       <PublicTopBar
         workspaceName={data.post.workspace.name}
+        workspaceSlug={data.post.workspace.slug}
+        boardSlug={data.post.board.slug}
         boardId={data.post.board.id}
       />
 

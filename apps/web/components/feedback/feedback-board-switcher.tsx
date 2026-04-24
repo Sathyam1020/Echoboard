@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import { Check, ChevronDown } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 export type SwitcherBoard = {
   id: string
@@ -20,11 +20,20 @@ export type SwitcherBoard = {
 export function FeedbackBoardSwitcher({
   boards,
   activeBoardId,
+  basePath,
 }: {
   boards: SwitcherBoard[]
   activeBoardId: string
+  /**
+   * Where to push the user when they pick a board. Defaults to the current
+   * route so the switcher works on /dashboard/feedback, /dashboard/roadmap,
+   * etc. without jumping pages.
+   */
+  basePath?: string
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const target = basePath ?? pathname
   const active = boards.find((b) => b.id === activeBoardId) ?? boards[0]
   if (!active) return null
 
@@ -45,7 +54,7 @@ export function FeedbackBoardSwitcher({
           <DropdownMenuItem
             key={b.id}
             onSelect={() => {
-              router.push(`/dashboard/feedback?boardId=${encodeURIComponent(b.id)}`)
+              router.push(`${target}?boardId=${encodeURIComponent(b.id)}`)
             }}
             className="flex items-center gap-2"
           >
