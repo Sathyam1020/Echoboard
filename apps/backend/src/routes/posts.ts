@@ -1,4 +1,4 @@
-import { and, asc, db, eq, sql } from "@workspace/db/client"
+import { and, asc, db, desc, eq, sql } from "@workspace/db/client"
 import {
   board,
   comment,
@@ -19,6 +19,39 @@ import { requireAuth } from "../middleware/require-auth.js"
 import { readOptionalUserId } from "./boards.js"
 
 export const postsRouter: Router = Router()
+
+// Fetch a post along with its workspace ownership info. Throws 404 if missing.
+async function loadPostWithOwnership(postId: string) {
+  const [row] = await db
+    .select({
+      post: post,
+      workspaceOwnerId: workspace.ownerId,
+      boardId: post.boardId,
+    })
+    .from(post)
+    .innerJoin(board, eq(post.boardId, board.id))
+    .innerJoin(workspace, eq(board.workspaceId, workspace.id))
+    .where(eq(post.id, postId))
+
+  if (!row) {
+    throw new AppError("Post not found", {
+      status: 404,
+      code: "POST_NOT_FOUND",
+    })
+  }
+  return row
+}
+
+// Guard: only the workspace owner can run this mutation.
+function assertIsWorkspaceOwner(
+  workspaceOwnerId: string,
+  userId: string,
+  message = "Only workspace owner can perform this action",
+): void {
+  if (workspaceOwnerId !== userId) {
+    throw new AppError(message, { status: 403, code: "FORBIDDEN" })
+  }
+}
 
 postsRouter.get("/:postId", async (req: Request, res: Response) => {
   const postId = req.params.postId
@@ -50,6 +83,21 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
   }
 
   const userId = await readOptionalUserId(req)
+  const viewerIsOwner = userId !== null && userId === row.workspace.ownerId
+
+  // If this post was merged into another, attach a `mergedInto` pointer so the
+  // frontend can redirect. The source row keeps existing, but has no votes/
+  // comments left (those were moved during the merge).
+  let mergedInto: { id: string; title: string } | null = null
+  if (row.post.mergedIntoPostId) {
+    const [target] = await db
+      .select({ id: post.id, title: post.title })
+      .from(post)
+      .where(eq(post.id, row.post.mergedIntoPostId))
+    if (target) {
+      mergedInto = { id: target.id, title: target.title }
+    }
+  }
 
   const voteCountRes = await db.execute(sql`
     SELECT COUNT(*)::int AS count FROM post_vote WHERE post_id = ${postId}
@@ -66,6 +114,28 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
         and(eq(postVote.postId, postId), eq(postVote.userId, userId)),
       )
     hasVoted = Boolean(voted)
+  }
+
+  // Voter list is admin-only. Top 20 most recent voters with names for the
+  // sidebar. Paginate later if anyone hits the ceiling.
+  let voters: Array<{ id: string; name: string; votedAt: string }> | null = null
+  if (viewerIsOwner) {
+    const voterRows = await db
+      .select({
+        id: user.id,
+        name: user.name,
+        votedAt: postVote.createdAt,
+      })
+      .from(postVote)
+      .leftJoin(user, eq(postVote.userId, user.id))
+      .where(eq(postVote.postId, postId))
+      .orderBy(desc(postVote.createdAt))
+      .limit(20)
+    voters = voterRows.map((v) => ({
+      id: v.id ?? "",
+      name: v.name ?? "Unknown",
+      votedAt: v.votedAt.toISOString(),
+    }))
   }
 
   const commentRows = await db
@@ -97,10 +167,14 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
       title: row.post.title,
       description: row.post.description,
       status: row.post.status,
+      pinnedAt: row.post.pinnedAt?.toISOString() ?? null,
+      mergedInto,
       createdAt: row.post.createdAt.toISOString(),
       authorName: row.authorName,
       voteCount,
       hasVoted,
+      viewerIsOwner,
+      voters,
       board: {
         id: row.board.id,
         name: row.board.name,
@@ -116,6 +190,301 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
     comments,
   })
 })
+
+const updatePostStatusBody = z.object({
+  status: z.enum(["review", "planned", "progress", "shipped"]),
+})
+
+postsRouter.patch(
+  "/:postId/status",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const postId = req.params.postId
+    if (typeof postId !== "string" || !postId) {
+      throw new AppError("Invalid post id", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const parsed = updatePostStatusBody.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError(
+        parsed.error.issues[0]?.message ?? "Invalid input",
+        { status: 400, code: "VALIDATION_ERROR" },
+      )
+    }
+
+    const row = await loadPostWithOwnership(postId)
+    const userId = res.locals.session!.user.id
+    assertIsWorkspaceOwner(
+      row.workspaceOwnerId,
+      userId,
+      "Only workspace owner can change status",
+    )
+
+    const [updated] = await db
+      .update(post)
+      .set({
+        status: parsed.data.status,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(post.id, postId))
+      .returning({ id: post.id, status: post.status })
+
+    if (!updated) {
+      throw new AppError("Post not found after update", {
+        status: 500,
+        code: "INTERNAL_ERROR",
+      })
+    }
+
+    res.json({
+      post: {
+        id: updated.id,
+        status: updated.status,
+      },
+    })
+  },
+)
+
+const updatePostBody = z
+  .object({
+    title: z.string().trim().min(3).max(140).optional(),
+    description: z.string().trim().min(1).max(4000).optional(),
+  })
+  .refine((v) => v.title !== undefined || v.description !== undefined, {
+    message: "Provide title or description",
+  })
+
+postsRouter.patch(
+  "/:postId",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const postId = req.params.postId
+    if (typeof postId !== "string" || !postId) {
+      throw new AppError("Invalid post id", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const parsed = updatePostBody.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError(
+        parsed.error.issues[0]?.message ?? "Invalid input",
+        { status: 400, code: "VALIDATION_ERROR" },
+      )
+    }
+
+    const row = await loadPostWithOwnership(postId)
+    const userId = res.locals.session!.user.id
+    assertIsWorkspaceOwner(
+      row.workspaceOwnerId,
+      userId,
+      "Only workspace owner can edit this post",
+    )
+
+    const patch: Record<string, unknown> = { updatedAt: sql`now()` }
+    if (parsed.data.title !== undefined) patch.title = parsed.data.title
+    if (parsed.data.description !== undefined)
+      patch.description = parsed.data.description
+
+    const [updated] = await db
+      .update(post)
+      .set(patch)
+      .where(eq(post.id, postId))
+      .returning({
+        id: post.id,
+        title: post.title,
+        description: post.description,
+      })
+
+    if (!updated) {
+      throw new AppError("Post not found after update", {
+        status: 500,
+        code: "INTERNAL_ERROR",
+      })
+    }
+
+    res.json({ post: updated })
+  },
+)
+
+postsRouter.delete(
+  "/:postId",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const postId = req.params.postId
+    if (typeof postId !== "string" || !postId) {
+      throw new AppError("Invalid post id", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const row = await loadPostWithOwnership(postId)
+    const userId = res.locals.session!.user.id
+    assertIsWorkspaceOwner(
+      row.workspaceOwnerId,
+      userId,
+      "Only workspace owner can delete this post",
+    )
+
+    // FK cascades handle votes + comments. Any post that had `merged_into = this`
+    // falls back to null via ON DELETE SET NULL.
+    await db.delete(post).where(eq(post.id, postId))
+
+    res.json({ ok: true })
+  },
+)
+
+const pinPostBody = z.object({ pinned: z.boolean() })
+
+postsRouter.patch(
+  "/:postId/pin",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const postId = req.params.postId
+    if (typeof postId !== "string" || !postId) {
+      throw new AppError("Invalid post id", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const parsed = pinPostBody.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError(
+        parsed.error.issues[0]?.message ?? "Invalid input",
+        { status: 400, code: "VALIDATION_ERROR" },
+      )
+    }
+
+    const row = await loadPostWithOwnership(postId)
+    const userId = res.locals.session!.user.id
+    assertIsWorkspaceOwner(
+      row.workspaceOwnerId,
+      userId,
+      "Only workspace owner can pin posts",
+    )
+
+    const [updated] = await db
+      .update(post)
+      .set({
+        pinnedAt: parsed.data.pinned ? sql`now()` : null,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(post.id, postId))
+      .returning({ id: post.id, pinnedAt: post.pinnedAt })
+
+    if (!updated) {
+      throw new AppError("Post not found after update", {
+        status: 500,
+        code: "INTERNAL_ERROR",
+      })
+    }
+
+    res.json({
+      post: {
+        id: updated.id,
+        pinnedAt: updated.pinnedAt?.toISOString() ?? null,
+      },
+    })
+  },
+)
+
+const mergePostBody = z.object({
+  targetPostId: z.string().min(1),
+})
+
+postsRouter.post(
+  "/:postId/merge",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const sourceId = req.params.postId
+    if (typeof sourceId !== "string" || !sourceId) {
+      throw new AppError("Invalid post id", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const parsed = mergePostBody.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError(
+        parsed.error.issues[0]?.message ?? "Invalid input",
+        { status: 400, code: "VALIDATION_ERROR" },
+      )
+    }
+
+    const targetId = parsed.data.targetPostId
+    if (sourceId === targetId) {
+      throw new AppError("Cannot merge a post into itself", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const source = await loadPostWithOwnership(sourceId)
+    const userId = res.locals.session!.user.id
+    assertIsWorkspaceOwner(
+      source.workspaceOwnerId,
+      userId,
+      "Only workspace owner can merge posts",
+    )
+
+    if (source.post.mergedIntoPostId) {
+      throw new AppError("Source post is already merged", {
+        status: 400,
+        code: "ALREADY_MERGED",
+      })
+    }
+
+    const target = await loadPostWithOwnership(targetId)
+    if (target.post.mergedIntoPostId) {
+      throw new AppError("Target post is itself merged", {
+        status: 400,
+        code: "TARGET_MERGED",
+      })
+    }
+    if (target.boardId !== source.boardId) {
+      throw new AppError("Posts must be on the same board", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    // Atomic batch — neon-http runs the array as a single server-side
+    // transaction. Vote duplicates are skipped via ON CONFLICT DO NOTHING so
+    // the unique (post_id, user_id) constraint holds.
+    await db.batch([
+      db.execute(sql`
+        UPDATE comment
+        SET post_id = ${targetId}
+        WHERE post_id = ${sourceId}
+      `),
+      db.execute(sql`
+        INSERT INTO post_vote (post_id, user_id, created_at)
+        SELECT ${targetId}, user_id, created_at
+        FROM post_vote
+        WHERE post_id = ${sourceId}
+        ON CONFLICT (post_id, user_id) DO NOTHING
+      `),
+      db.execute(sql`
+        DELETE FROM post_vote WHERE post_id = ${sourceId}
+      `),
+      db
+        .update(post)
+        .set({ mergedIntoPostId: targetId, updatedAt: sql`now()` })
+        .where(eq(post.id, sourceId)),
+    ])
+
+    res.json({
+      merged: { sourceId, targetId },
+    })
+  },
+)
 
 const createCommentBody = z.object({
   body: z.string().trim().min(1).max(4000),
@@ -268,3 +637,4 @@ postsRouter.post(
     res.json({ hasVoted: wasInserted, voteCount })
   }
 )
+

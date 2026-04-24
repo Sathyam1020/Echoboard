@@ -7,6 +7,7 @@ import { PublicTopBar } from "@/components/boards/public-top-bar"
 import type { PostDetailResponse } from "@/components/boards/types"
 import { CommentList } from "@/components/post/comment-list"
 import { PostHeader } from "@/components/post/post-header"
+import { StatusPicker } from "@/components/post/status-picker"
 import { ApiError, serverApi } from "@/lib/api"
 
 export default async function PostPage({
@@ -53,6 +54,15 @@ export default async function PostPage({
         </Link>
 
         <PostHeader post={data.post} />
+
+        {data.post.viewerIsOwner ? (
+          <div className="mt-6">
+            <StatusPicker
+              postId={data.post.id}
+              initialStatus={data.post.status}
+            />
+          </div>
+        ) : null}
 
         <hr className="my-8 border-border" />
 

@@ -107,9 +107,11 @@ export function AppSidebar({
               href="/dashboard"
               isActive={activeItem === "dashboard"}
             />
-            <AnimatedNavItemDisabled
+            <AnimatedNavItem
               icon={MessageSquareIcon}
               label="Feedback"
+              href="/dashboard/feedback"
+              isActive={activeItem === "feedback"}
             />
             <AnimatedNavItemDisabled icon={RouteIcon} label="Roadmap" />
             <AnimatedNavItemDisabled icon={FileTextIcon} label="Changelog" />

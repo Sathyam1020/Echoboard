@@ -32,15 +32,14 @@ export function PublicTopBar({
   return (
     <div className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-6 py-3">
-        <Link href="/" className="flex items-center gap-2.5">
+        <div className="flex cursor-pointer items-center gap-2.5">
           <span className="flex size-[22px] items-center justify-center rounded-md bg-foreground font-mono text-[12px] font-medium text-background">
             {initial}
           </span>
           <span className="text-sm font-medium">{workspaceName}</span>
-          <span className="text-sm text-muted-foreground">/ Feedback</span>
-        </Link>
+        </div>
 
-        <nav className="ml-2 flex gap-1">
+        <nav className="ml-5 flex gap-1">
           {TABS.map((t) => (
             <span
               key={t.id}
@@ -50,12 +49,12 @@ export function PublicTopBar({
                 activeTab === t.id && t.live
                   ? "bg-muted font-medium text-foreground"
                   : "text-muted-foreground",
-                !t.live && "cursor-not-allowed opacity-70",
+                !t.live && "cursor-not-allowed opacity-70"
               )}
             >
               {t.label}
               {!t.live ? (
-                <span className="text-[10px] uppercase tracking-wider text-foreground-subtle">
+                <span className="text-[10px] tracking-wider text-foreground-subtle uppercase">
                   Soon
                 </span>
               ) : null}

@@ -60,6 +60,11 @@ export const post = pgTable(
     title: text("title").notNull(),
     description: text("description").notNull(),
     status: text("status").default("review").notNull(),
+    pinnedAt: timestamp("pinned_at"),
+    mergedIntoPostId: text("merged_into_post_id").references(
+      (): AnyPgColumn => post.id,
+      { onDelete: "set null" },
+    ),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -69,6 +74,7 @@ export const post = pgTable(
   (table) => [
     index("post_boardId_idx").on(table.boardId),
     index("post_boardId_createdAt_idx").on(table.boardId, table.createdAt),
+    index("post_mergedIntoPostId_idx").on(table.mergedIntoPostId),
   ],
 )
 

@@ -28,6 +28,7 @@ export type PostRow = {
   title: string
   description: string
   status: string
+  pinnedAt: string | null
   createdAt: string
   authorName: string | null
   voteCount: number
@@ -36,15 +37,29 @@ export type PostRow = {
   latestComment: LatestComment | null
 }
 
+export type Voter = {
+  id: string
+  name: string
+  votedAt: string
+}
+
+export type MergedIntoRef = {
+  id: string
+  title: string
+}
+
 export type PostDetail = {
   id: string
   title: string
   description: string
   status: string
+  pinnedAt: string | null
+  mergedInto: MergedIntoRef | null
   createdAt: string
   authorName: string | null
   voteCount: number
   hasVoted: boolean
+  voters: Voter[] | null
   board: { id: string; name: string; slug: string }
   workspace: {
     id: string
@@ -52,6 +67,7 @@ export type PostDetail = {
     slug: string
     ownerId: string
   }
+  viewerIsOwner: boolean
 }
 
 export type PostDetailResponse = {

@@ -20,6 +20,7 @@ type PostListRow = {
   title: string
   description: string
   status: string
+  pinnedAt: Date | null
   createdAt: Date
   authorName: string | null
 }
@@ -31,7 +32,8 @@ type LatestComment = {
   author: { id: string; name: string } | null
 }
 
-type EnrichedPost = PostListRow & {
+type EnrichedPost = Omit<PostListRow, "pinnedAt"> & {
+  pinnedAt: string | null
   voteCount: number
   hasVoted: boolean
   commentCount: number
@@ -116,6 +118,7 @@ async function enrichPostsWithVotes(
 
   return posts.map((p) => ({
     ...p,
+    pinnedAt: p.pinnedAt?.toISOString() ?? null,
     voteCount: counts.get(p.id) ?? 0,
     hasVoted: votedSet.has(p.id),
     commentCount: commentCounts.get(p.id) ?? 0,
@@ -189,13 +192,19 @@ boardsRouter.get(
         title: post.title,
         description: post.description,
         status: post.status,
+        pinnedAt: post.pinnedAt,
         createdAt: post.createdAt,
         authorName: user.name,
       })
       .from(post)
       .leftJoin(user, eq(post.authorId, user.id))
-      .where(eq(post.boardId, row.board.id))
-      .orderBy(desc(post.createdAt))
+      .where(
+        and(eq(post.boardId, row.board.id), isNull(post.mergedIntoPostId)),
+      )
+      .orderBy(
+        sql`${post.pinnedAt} DESC NULLS LAST`,
+        desc(post.createdAt),
+      )
 
     const userId = await readOptionalUserId(req)
     const enriched = await enrichPostsWithVotes(posts, userId)
@@ -237,13 +246,17 @@ boardsRouter.get(
         title: post.title,
         description: post.description,
         status: post.status,
+        pinnedAt: post.pinnedAt,
         createdAt: post.createdAt,
         authorName: user.name,
       })
       .from(post)
       .leftJoin(user, eq(post.authorId, user.id))
-      .where(eq(post.boardId, b.id))
-      .orderBy(desc(post.createdAt))
+      .where(and(eq(post.boardId, b.id), isNull(post.mergedIntoPostId)))
+      .orderBy(
+        sql`${post.pinnedAt} DESC NULLS LAST`,
+        desc(post.createdAt),
+      )
 
     const userId = await readOptionalUserId(req)
     const enriched = await enrichPostsWithVotes(posts, userId)

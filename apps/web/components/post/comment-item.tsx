@@ -88,24 +88,14 @@ export function CommentItem({
   }
 
   return (
-    <div className="flex gap-3">
-      <div className="flex shrink-0 flex-col items-center">
+    <article className="flex gap-3">
+      <div className="shrink-0 pt-0.5">
         <Avatar name={node.author?.name ?? "Deleted"} size={32} />
-        {hasChildren && !collapsed ? (
-          <button
-            type="button"
-            onClick={() => setCollapsed(true)}
-            aria-label="Collapse thread"
-            className="group flex w-8 flex-1 cursor-pointer justify-center py-1.5"
-          >
-            <div className="h-full w-px bg-border transition-colors group-hover:bg-foreground" />
-          </button>
-        ) : null}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2 text-[12px]">
-          <span className="font-medium text-foreground">
+      <div className="min-w-0 flex-1">
+        <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-[13px] font-medium text-foreground">
             {node.author?.name ?? "Deleted user"}
           </span>
           {node.author?.role === "owner" ? (
@@ -114,146 +104,158 @@ export function CommentItem({
             </span>
           ) : null}
           <span
-            className="font-mono tabular-nums text-muted-foreground"
+            className="font-mono text-[11px] text-muted-foreground tabular-nums"
             title={new Date(node.createdAt).toLocaleString()}
           >
             {formatRelativeTime(node.createdAt)}
           </span>
           {node.editedAt && !isTombstoned ? (
-            <span className="text-muted-foreground">(edited)</span>
+            <span className="text-[11px] text-muted-foreground">(edited)</span>
           ) : null}
-          {collapsed && hasChildren ? (
-            <button
-              type="button"
-              onClick={() => setCollapsed(false)}
-              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Expand thread"
-            >
-              + {hiddenCount} hidden
-            </button>
-          ) : null}
-        </div>
+        </header>
 
-        {!collapsed ? (
-          <>
-            {editing ? (
-              <CommentForm
-                mode="edit"
-                postId={postId}
-                commentId={node.id}
-                initialBody={node.body}
-                onSuccess={(c) => {
-                  setEditing(false)
-                  onUpdate(c)
-                }}
-                onCancel={() => setEditing(false)}
-              />
-            ) : (
-              <p
-                className={cn(
-                  "whitespace-pre-wrap break-words text-[13px] leading-relaxed",
-                  isTombstoned && "italic text-muted-foreground",
-                )}
-              >
-                {isTombstoned ? node.body : renderLinkifiedText(node.body)}
-              </p>
+        {editing ? (
+          <div className="mt-2">
+            <CommentForm
+              mode="edit"
+              postId={postId}
+              commentId={node.id}
+              initialBody={node.body}
+              onSuccess={(c) => {
+                setEditing(false)
+                onUpdate(c)
+              }}
+              onCancel={() => setEditing(false)}
+            />
+          </div>
+        ) : (
+          <p
+            className={cn(
+              "mt-1.5 text-[13.5px] leading-relaxed break-words whitespace-pre-wrap text-foreground",
+              isTombstoned && "text-muted-foreground italic",
             )}
+          >
+            {isTombstoned ? node.body : renderLinkifiedText(node.body)}
+          </p>
+        )}
 
-            {!isTombstoned && !editing ? (
-              <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
-                {userId ? (
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => setReplying((r) => !r)}
-                  >
-                    Reply
-                  </Button>
-                ) : null}
-                {canMutate ? (
-                  <>
+        {deleteError ? (
+          <p className="mt-1 text-[12px] text-destructive">{deleteError}</p>
+        ) : null}
+
+        {!isTombstoned && !editing ? (
+          <div className="mt-2 -ml-2 flex items-center gap-0.5">
+            {userId ? (
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
+                onClick={() => setReplying((r) => !r)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Reply
+              </Button>
+            ) : null}
+            {canMutate ? (
+              <>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setEditing(true)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Edit
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
                     <Button
                       type="button"
                       size="xs"
                       variant="ghost"
-                      onClick={() => setEditing(true)}
+                      disabled={deletePending}
+                      className="text-muted-foreground hover:text-foreground"
                     >
-                      Edit
+                      {deletePending ? "Deleting…" : "Delete"}
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="ghost"
-                          disabled={deletePending}
-                        >
-                          {deletePending ? "Deleting…" : "Delete"}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent size="sm">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete comment?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Your comment will be replaced with{" "}
-                            <span className="font-medium">[deleted]</span>.
-                            Replies under it stay visible.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            variant="destructive"
-                            onClick={onDelete}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </>
-                ) : null}
-              </div>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete comment?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Your comment will be replaced with{" "}
+                        <span className="font-medium">[deleted]</span>.
+                        Replies under it stay visible.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={onDelete}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             ) : null}
-
-            {deleteError ? (
-              <p className="text-[12px] text-destructive">{deleteError}</p>
-            ) : null}
-
-            {replying && !isTombstoned ? (
-              <div className="mt-1">
-                <CommentForm
-                  mode="reply"
-                  postId={postId}
-                  parentId={node.id}
-                  onSuccess={(c) => {
-                    setReplying(false)
-                    onAdd(c)
-                  }}
-                  onCancel={() => setReplying(false)}
-                />
-              </div>
-            ) : null}
-
             {hasChildren ? (
-              <div className="mt-2 flex flex-col gap-3">
-                {node.children.map((child) => (
-                  <CommentItem
-                    key={child.id}
-                    node={child}
-                    depth={depth + 1}
-                    postId={postId}
-                    workspaceOwnerId={workspaceOwnerId}
-                    onAdd={onAdd}
-                    onUpdate={onUpdate}
-                  />
-                ))}
-              </div>
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
+                onClick={() => setCollapsed((c) => !c)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {collapsed
+                  ? `Show ${hiddenCount} ${hiddenCount === 1 ? "reply" : "replies"}`
+                  : "Collapse"}
+              </Button>
             ) : null}
-          </>
+          </div>
+        ) : null}
+
+        {replying && !isTombstoned ? (
+          <div className="mt-3">
+            <CommentForm
+              mode="reply"
+              postId={postId}
+              parentId={node.id}
+              onSuccess={(c) => {
+                setReplying(false)
+                onAdd(c)
+              }}
+              onCancel={() => setReplying(false)}
+            />
+          </div>
+        ) : null}
+
+        {hasChildren && !collapsed ? (
+          <div className="mt-4 flex gap-4">
+            <button
+              type="button"
+              aria-label="Collapse thread"
+              onClick={() => setCollapsed(true)}
+              className="w-0.5 shrink-0 cursor-pointer rounded-full bg-border transition-colors hover:bg-foreground/60 focus-visible:bg-foreground/60 focus-visible:outline-none"
+            />
+            <div className="min-w-0 flex-1 space-y-5">
+              {node.children.map((child) => (
+                <CommentItem
+                  key={child.id}
+                  node={child}
+                  depth={depth + 1}
+                  postId={postId}
+                  workspaceOwnerId={workspaceOwnerId}
+                  onAdd={onAdd}
+                  onUpdate={onUpdate}
+                />
+              ))}
+            </div>
+          </div>
         ) : null}
       </div>
-    </div>
+    </article>
   )
 }

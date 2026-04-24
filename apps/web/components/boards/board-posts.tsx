@@ -42,7 +42,7 @@ export function BoardPosts({
           p.description.toLowerCase().includes(q),
       )
     }
-    return [...arr].sort((a, b) => {
+    const sorter = (a: PostRow, b: PostRow) => {
       if (sort === "votes") {
         const diff = b.voteCount - a.voteCount
         if (diff !== 0) return diff
@@ -50,7 +50,13 @@ export function BoardPosts({
       }
       const cmp = a.createdAt.localeCompare(b.createdAt)
       return sort === "newest" ? -cmp : cmp
-    })
+    }
+    // Pinned posts always land on top regardless of the selected sort.
+    const pinned = arr.filter((p) => p.pinnedAt)
+    const rest = arr.filter((p) => !p.pinnedAt)
+    pinned.sort(sorter)
+    rest.sort(sorter)
+    return [...pinned, ...rest]
   }, [posts, search, sort])
 
   return (
