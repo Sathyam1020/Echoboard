@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { type ReactNode } from "react"
 
@@ -6,6 +7,13 @@ import {
   fetchDashboardBoardsSSR,
 } from "@/services/dashboard.server"
 import { fetchWorkspacesMeSSR } from "@/services/workspaces.server"
+
+// Dashboard surfaces are auth-gated and contain no public-search-relevant
+// content. Block crawlers explicitly so the noindex tag is set even when a
+// crawler somehow lands here (e.g., misconfigured links from outside).
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 // Admin shell guard. Auth + onboarding redirects only — no rendering of
 // remote data here, so we don't need HydrationBoundary at this layer.

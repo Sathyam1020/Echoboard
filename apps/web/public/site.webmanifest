@@ -1,0 +1,13 @@
+{
+  "name": "EchoBoard",
+  "short_name": "EchoBoard",
+  "description": "Customer feedback made simple",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#262626",
+  "background_color": "#ffffff",
+  "icons": [
+    { "src": "/icon", "sizes": "32x32", "type": "image/png" },
+    { "src": "/apple-icon", "sizes": "180x180", "type": "image/png" }
+  ]
+}

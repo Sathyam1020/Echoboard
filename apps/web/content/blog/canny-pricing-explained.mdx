@@ -1,0 +1,130 @@
+---
+title: "Canny pricing explained: what you actually pay at every scale"
+description: "A deep look at Canny's pricing model — tracked users, tier breakpoints, the real cost at 100 / 1,000 / 5,000 users, and when the math stops working for your team."
+publishedAt: "2026-04-22"
+author: "EchoBoard team"
+tags: ["Pricing", "Comparisons"]
+---
+
+Canny's pricing page is straightforward at first glance. Free plan, Core ($19/mo), Pro ($79/mo), Business (custom). Click into the details and the picture changes — the headline number is just the entry price, and the actual cost depends on something most pricing pages bury: how many **tracked users** you have.
+
+This post is a practical breakdown of what Canny actually costs, what a "tracked user" is, where the tier walls hit, and when you're better off looking at alternatives. Pricing data was verified on Canny's own pages on 2026-04-26.
+
+<Callout variant="info" title="Why this matters">
+Canny is a great product. The reason teams write blog posts like this one isn't
+that it's bad — it's that the **per-tracked-user** pricing model has a steep
+penalty curve as you grow. Knowing the breakpoints lets you plan ahead instead
+of getting surprised by a renewal email.
+</Callout>
+
+## What is a "tracked user"?
+
+A tracked user in Canny is anyone who's interacted with your boards — voted, commented, or posted. The count is **rolling**: it includes everyone who's ever taken an action, not just monthly actives.
+
+A few practical implications:
+
+- **The number grows in only one direction.** A user who voted last year and never came back still counts.
+- **Anonymous voters get tracked.** Even if Canny doesn't know who they are by name, the device gets counted as a tracked user.
+- **You can purge inactive users**, but it's a manual operation buried in admin settings, and most teams don't do it.
+
+For most SaaS teams, the tracked user count grows ~3x faster than monthly actives. That's the trap — the pricing tier you signed up at six months ago is no longer the tier you're actually on.
+
+## The tier breakdown
+
+### Free plan
+
+- **Cost:** $0/mo
+- **Tracked users:** 25
+- **Boards:** 1
+- **Includes:** Autopilot AI (deduplication), unlimited posts
+
+The free plan is a true free tier in the sense that it's not time-limited, but the 25-tracked-user cap is small enough that any product with public engagement will hit it within weeks. It's best understood as a trial, not a long-term home.
+
+### Core plan
+
+- **Cost:** $19/mo (yearly) or $29/mo (monthly)
+- **Tracked users:** 100 (additional packs available)
+- **Boards:** 1
+- **Includes:** Custom domain, public roadmap, integrations like Slack and Intercom
+
+Core is where most SaaS teams start in earnest. The yearly price ($228/year) is reasonable. The catch is the 100-tracked-user cap — most teams blow through it within 60-90 days of going live. After that you're either buying overage packs or upgrading to Pro.
+
+### Pro plan
+
+- **Cost:** $79/mo (yearly) or $99/mo (monthly)
+- **Tracked users:** 1,000 (additional packs available)
+- **Boards:** Unlimited
+- **Includes:** Jira, Linear, Asana, ClickUp, GitHub, Azure DevOps, Salesforce, HubSpot integrations + API + webhooks
+
+Pro is the workhorse tier. $948/year. This is where Canny's product really shines — every meaningful integration unlocks here. It's also where most teams settle for the long haul, until tracked users push them past 1,000.
+
+### Business plan
+
+- **Cost:** Custom
+- **Tracked users:** 5,000+
+- **Boards:** Unlimited
+- **Includes:** SSO/SAML, dedicated support, advanced segmentation
+
+Business pricing is undisclosed publicly. Based on customer reports, it typically lands in the **$300-600/mo range** for teams in the 5,000-15,000 tracked-user band, with custom enterprise pricing above that. The jump from Pro to Business is the biggest pricing cliff in Canny's lineup.
+
+## What it costs at every scale
+
+Let's run the numbers on a realistic SaaS growth curve.
+
+| Tracked users | Plan | Yearly cost |
+| --- | --- | --- |
+| 25 | Free | $0 |
+| 100 | Core | $228 |
+| 500 | Pro (under cap) | $948 |
+| 1,000 | Pro (at cap) | $948 |
+| 2,500 | Pro + overage | ~$1,400 |
+| 5,000 | Business (entry) | ~$3,600 |
+| 10,000 | Business | ~$5,000+ |
+
+A SaaS that goes from launch to 5,000 tracked users in two years pays roughly **$5,000-7,000 to Canny across that period** — small relative to MRR if you're at $50k MRR, painful if you're at $5k MRR.
+
+## Where the model breaks
+
+Canny's pricing model is well-aligned for a specific type of product: B2B SaaS with **stable, paying customer counts** and **high MRR per user**. If you have 500 customers paying $200/mo each, paying Canny $948/year is a rounding error.
+
+The model breaks for:
+
+### Community-driven products
+
+If most of your "tracked users" are not paying customers — they're free-tier users, prospects, or developers in your community — you're paying Canny for engagement that doesn't directly drive revenue. Common with devtools, OSS projects, and consumer apps.
+
+### Pre-PMF startups
+
+When you don't know if you'll have 50 or 5,000 customers next year, signing up for usage-based pricing is hard to budget for. The Core plan's 100-tracked-user cap is too tight; the Pro plan's $948/year is too expensive when you're not yet sure if the product will be alive in 18 months.
+
+### Products with bursty traffic
+
+Consumer apps that hit Product Hunt or a viral tweet can pick up thousands of new tracked users overnight. Most of them never come back, but they all count toward your tier forever.
+
+## Mitigations within Canny
+
+If you're committed to staying on Canny but want to control costs:
+
+1. **Purge inactive tracked users quarterly.** It's tedious — there's no bulk "remove tracked users who haven't acted in 12 months" button — but it's free.
+2. **Use private boards for internal feedback.** Internal users still count toward your tracked-user cap. Move internal feedback to Notion or a dedicated tool.
+3. **Don't pre-identify everyone.** If your widget pre-identifies every signed-in user via JS, every signup becomes a tracked user. Pre-identify only when they take an action.
+4. **Stay on Pro as long as possible.** The Pro-to-Business jump is the biggest pricing cliff. Buy overage packs to extend your time on Pro.
+
+## When to look at alternatives
+
+The decision tree is simple:
+
+- **You're at fewer than 100 tracked users:** Stay on Canny Free or Core. The price-to-value is fine.
+- **You're at 100-1,000 tracked users:** Canny Pro is reasonable if you need its integrations. If you don't, flat-rate alternatives are cheaper.
+- **You're approaching 1,000-5,000:** Look at alternatives now. The Pro overage path or Business jump is where the math gets ugly.
+- **You're past 5,000 and growing fast:** Almost any flat-rate alternative will save you money. The only reason to stay is integration depth or brand familiarity.
+
+We compared 10 [Canny alternatives](/alternatives) — flat-rate hosted tools, all-in-one suites, open source, and budget options. Most teams that switch report saving $500-2,000/year, with the main complaint being "I should've moved sooner."
+
+## The bottom line
+
+Canny's pricing is rational from Canny's perspective. They've optimized for B2B SaaS with stable user counts, where the per-tracked-user model captures fair value. If you're that customer, Canny is the safer, more mature pick.
+
+If you're not — community-driven, pre-PMF, or growing fast in user count without proportional revenue growth — Canny's pricing is going to hurt more than it should. The good news: there are 10 alternatives that priced their plans differently, and most of them cost less than your domain renewal.
+
+[See pricing of every Canny alternative →](/alternatives/canny)

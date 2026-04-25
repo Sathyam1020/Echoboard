@@ -1,4 +1,5 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { OnboardingBoardContent } from "@/components/onboarding/onboarding-board-content"
@@ -6,6 +7,11 @@ import { getSession } from "@/lib/get-session"
 import { queryKeys } from "@/lib/query/keys"
 import { makeQueryClient } from "@/lib/query/query-client"
 import { fetchWorkspacesMeSSR } from "@/services/workspaces.server"
+
+export const metadata: Metadata = {
+  title: "Create your first board",
+  robots: { index: false, follow: false },
+}
 
 export default async function OnboardingBoardPage() {
   const session = await getSession()

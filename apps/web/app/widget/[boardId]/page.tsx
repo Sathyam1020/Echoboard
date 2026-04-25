@@ -1,9 +1,16 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { WidgetUI } from "@/components/widget/widget-ui"
 import { ApiError } from "@/lib/http/api-error"
 import { fetchPostsByBoardSSR } from "@/services/boards.server"
 import { fetchWidgetConfigSSR } from "@/services/widget-config.server"
+
+// Widget surface is rendered inside an iframe on third-party sites. It's
+// not a destination for search traffic — block crawlers explicitly.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default async function WidgetIframePage({
   params,

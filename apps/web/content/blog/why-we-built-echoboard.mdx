@@ -1,0 +1,111 @@
+---
+title: "Why we built EchoBoard"
+description: "The story behind EchoBoard — why per-tracked-user pricing breaks for early-stage SaaS, what we set out to build differently, and what we explicitly decided to leave out (for now)."
+publishedAt: "2026-04-10"
+author: "EchoBoard team"
+tags: ["EchoBoard", "Product"]
+---
+
+This post is the origin story of EchoBoard — what frustrated us about existing feedback tools, what we set out to fix, and the deliberate trade-offs we made along the way. If you're a customer or evaluating us, this is the thinking behind what you're using.
+
+## The starting point: a frustrated SaaS team
+
+A year ago, we were running a different SaaS product. Small team, ~$15k MRR, growing. We'd reached the point where users were submitting feature requests faster than we could track them — Intercom threads, support emails, the occasional Twitter DM, and a Notion doc that started clean and turned into chaos by month two.
+
+We tried Canny. It worked. The product was great, the UI was clean, the integrations were comprehensive. The problem was the bill.
+
+By the time our user count crossed 1,000 tracked users, our Canny bill had grown to where it was a meaningful line item. Pro plan ($79/mo) at the cap, then overage packs, eventually a conversation about Business pricing. The total trajectory looked like several thousand dollars per year for a tool we used for ~30 minutes per week of triage.
+
+We looked at alternatives. Each one had its own trade-off:
+
+- **Featurebase** — great product, per-seat pricing scaled with our team.
+- **UserJot** — flat-rate, but the free plan didn't include the widget.
+- **Nolt** — clean, but no permanent free plan.
+- **Fider** — open source, but no roadmap or changelog out of the box.
+- **Sleekplan** — cheap, but custom domains gated behind Business tier.
+
+The pattern: every tool was great for one specific kind of team, and not quite right for ours. Predictable pricing, no-login feedback, free roadmap and changelog, modern UI — those four things didn't all live in the same product.
+
+So we built it.
+
+## What we set out to do differently
+
+Three principles shaped EchoBoard from the start:
+
+### 1. Pricing should not punish growth
+
+The model that broke for us was per-tracked-user pricing. Your costs go up because more people care about your product. That's the wrong incentive structure.
+
+We picked **flat-rate** instead. Free for unlimited users, $49/mo flat for Pro. Your bill doesn't change as your audience grows from 100 to 100,000.
+
+This forced us to make harder product decisions — we couldn't fund the product by charging more as customers scale, so we had to be lean. That's a feature, not a bug.
+
+### 2. Feedback shouldn't require an account
+
+Most feedback tools ask users to sign up before they can vote or comment. The friction kills the feedback you'd otherwise get from prospects, lurkers, and "I'm just here to upvote one thing" users.
+
+EchoBoard's widget asks for an email and nothing else. No password, no confirmation flow, no account. The user submits, we cookie them, and they can come back to follow up without re-entering anything.
+
+This is the highest-leverage decision in the product. The volume of feedback you collect is directly proportional to the friction of submitting it.
+
+### 3. The free tier should be a real free tier
+
+Most "free" plans in this category are restrictive enough that they're effectively trials. Canny: 25 tracked users. Featurebase Free: 1 seat. Nolt: no free plan. UserJot Free: no widget, no integrations.
+
+Our free plan is what most competitors would charge $20-30/mo for: unlimited users, unlimited posts, public roadmap, changelog, the embeddable widget. Pro adds multiple boards, custom domains, and white-labeling — features you grow into, not features you start with.
+
+The bet: if free works for you forever, great. We make money from the teams that grow into the Pro use case (multiple products, custom domain, no EchoBoard branding).
+
+## What we deliberately left out (for now)
+
+A common temptation when building a feedback tool is to copy every feature your competitors ship. Don't. Each feature has maintenance cost, surface area cost, and complexity cost.
+
+We deliberately **didn't ship** these on day one:
+
+### Jira / Slack / Linear integrations
+
+These are on the roadmap. Building them properly is a meaningful chunk of work — Jira's API has 15 years of accumulated quirks, and a flaky integration is worse than no integration. We'd rather ship them right than ship them rushed.
+
+For now, EchoBoard teams either link Linear/Jira tickets manually in feedback posts, or use Zapier as a bridge. It's a workaround; it'll be replaced.
+
+### MRR-weighted voting
+
+Featurebase ships this; we don't yet. The honest reason is that it requires a Stripe (or Chargebee, or Paddle) integration, which means another stable connection to maintain. We'll ship it once the customer demand is clearly there and we can do it well.
+
+### AI features
+
+Auto-deduplication, sentiment analysis, summarization — every modern competitor ships AI features. We're going to ship them too, but we want to be deliberate. AI features that are 80% accurate produce more cleanup work than they save. We'd rather ship one AI feature that's reliably useful than five that need babysitting.
+
+### Self-hosting
+
+We're a hosted product, deliberately. Self-hosting introduces support burden (every customer becomes a unique deployment with unique problems) and slows shipping (every change has to work across N database versions and Y operating systems). If self-hosting is a hard requirement, Fider is the open-source path — it's a great product for that use case.
+
+### Enterprise features
+
+SSO, SAML, audit logs, SCIM provisioning — all on the roadmap, none on day one. The enterprise-readiness checklist is real work, and we want to nail the core feedback workflow first.
+
+## The trade-offs we accepted
+
+Building a product is choosing what to be bad at. A few honest admissions:
+
+**We're newer than the established players.** Canny has 9 years of polish. We have months. There are edge cases in our product that they've already encountered and fixed. We'll get there, but we're not there yet.
+
+**Some integrations don't exist yet.** If your team can't function without a Linear integration today, EchoBoard isn't your tool today. Probably will be in six months.
+
+**Mobile-first design has trade-offs on desktop.** We built mobile-first because most feedback tools were built before mobile mattered and treat phones as second-class citizens. The trade-off: our desktop layout is intentionally simpler than competitors', which some users read as "too sparse." Fair criticism — we're iterating.
+
+**Our brand awareness is zero.** Canny has SEO equity from a decade of content. We're starting from scratch. This means we have to be obviously better at the things we're better at, since we don't have the brand to coast on.
+
+## Where we are now
+
+EchoBoard is in its first months. Hundreds of teams have signed up, feedback volume is climbing, and the product is shipping faster than it would at a larger company. We're bootstrapped — no investor pressure, no growth-at-all-costs imperatives. Every feature we ship is a feature a customer asked for or that we need to use ourselves.
+
+The roadmap is public. The changelog ships when features ship. The pricing page is honest about what's free and what's Pro. Those are deliberate choices, not marketing language — the product reflects what we wished existed when we were on the customer side.
+
+If you're evaluating feedback tools, we'd love for you to try EchoBoard. If it's not the right fit today, the [Canny alternatives roundup](/blog/canny-alternatives) walks through every credible option in the category — including ones we'd recommend over our own product for specific use cases.
+
+The goal isn't to win every customer. The goal is to be the obvious right answer for the customers we **are** the right answer for, and to honestly point everyone else at the better option for them.
+
+Thanks for reading.
+
+[Try EchoBoard free →](/signup)

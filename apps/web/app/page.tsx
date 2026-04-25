@@ -7,6 +7,11 @@ import { PainStrip } from "@/components/landing/pain-strip"
 import { Pricing } from "@/components/landing/pricing"
 import { ProductDemo } from "@/components/landing/product-demo"
 import { TrustRow } from "@/components/landing/trust-row"
+import {
+  JsonLd,
+  organizationSchema,
+  softwareApplicationSchema,
+} from "@/components/seo/json-ld"
 import { getSession } from "@/lib/get-session"
 
 export default async function LandingPage() {
@@ -25,6 +30,13 @@ export default async function LandingPage() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
+      {/* Structured data for the home page. Two schemas: Organization
+          establishes the brand entity for Google's Knowledge Graph;
+          SoftwareApplication classifies us as an indexable product so we can
+          win software-category SERP features. */}
+      <JsonLd data={organizationSchema()} />
+      <JsonLd data={softwareApplicationSchema()} />
+
       <Nav initialAuth={initialAuth} />
       <main className="flex flex-col">
         <Hero />

@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 
 import { AuthCard } from "@/components/auth/auth-card"
@@ -5,6 +6,11 @@ import { AuthShell } from "@/components/auth/auth-shell"
 import { Divider } from "@/components/auth/divider"
 import { GoogleButton } from "@/components/auth/google-button"
 import { SignupForm } from "@/components/auth/signup-form"
+
+export const metadata: Metadata = {
+  title: "Sign up",
+  robots: { index: false, follow: false },
+}
 
 export default function SignupPage() {
   return (

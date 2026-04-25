@@ -1,8 +1,14 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { StepDots } from "@/components/onboarding/step-dots"
 import { WorkspaceForm } from "@/components/onboarding/workspace-form"
 import { getSession } from "@/lib/get-session"
+
+export const metadata: Metadata = {
+  title: "Create your workspace",
+  robots: { index: false, follow: false },
+}
 
 export default async function OnboardingWorkspacePage() {
   const session = await getSession()

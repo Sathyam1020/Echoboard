@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
 
@@ -6,6 +7,11 @@ import { AuthShell } from "@/components/auth/auth-shell"
 import { Divider } from "@/components/auth/divider"
 import { GoogleButton } from "@/components/auth/google-button"
 import { SigninForm } from "@/components/auth/signin-form"
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  robots: { index: false, follow: false },
+}
 
 export default function SigninPage() {
   return (
