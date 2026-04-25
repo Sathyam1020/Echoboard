@@ -1,23 +1,12 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
 import { notFound } from "next/navigation"
 
-import { PublicFooter } from "@/components/boards/public-footer"
-import { PublicSidebar } from "@/components/boards/public-sidebar"
-import { PublicTopBar } from "@/components/boards/public-top-bar"
-import { ProductActivityCard } from "@/components/changelog/product-activity-card"
-import { PublicChangelog } from "@/components/changelog/public-changelog"
-import type { PublicChangelogEntry } from "@/components/changelog/types"
-import { ApiError, serverApi } from "@/lib/api"
-
-type PublicChangelogResponse = {
-  workspace: { id: string; name: string; slug: string }
-  firstBoard: { id: string; name: string; slug: string } | null
-  entries: PublicChangelogEntry[]
-}
-
-type BoardBySlugResponse = {
-  workspace: { id: string; name: string; slug: string; ownerId: string }
-  board: { id: string; name: string; slug: string; visibility: string }
-}
+import { PublicChangelogContent } from "@/components/changelog/public-changelog-content"
+import { ApiError } from "@/lib/http/api-error"
+import { makeQueryClient } from "@/lib/query/query-client"
+import { queryKeys } from "@/lib/query/keys"
+import { fetchBoardBySlugSSR } from "@/services/boards.server"
+import { fetchPublicChangelogSSR } from "@/services/changelog.server"
 
 export default async function PublicChangelogPage({
   params,
@@ -26,23 +15,22 @@ export default async function PublicChangelogPage({
 }) {
   const { workspaceSlug, boardSlug } = await params
 
-  // Fetch the board first so the top bar's Feedback/Roadmap tabs anchor to
-  // THIS board (the one in the URL) — not whichever board happens to be
-  // first in the workspace. The workspace-scoped changelog data comes next.
-  let board: BoardBySlugResponse
-  try {
-    board = await serverApi.get<BoardBySlugResponse>(
-      `/api/boards/by-slug/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}`,
-    )
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
-  }
+  const queryClient = makeQueryClient()
 
-  let data: PublicChangelogResponse
+  // Both fetches happen in parallel on the server — no point sequencing
+  // them. Either failing with 404 should surface as not-found.
   try {
-    data = await serverApi.get<PublicChangelogResponse>(
-      `/api/changelog/public/${encodeURIComponent(workspaceSlug)}`,
+    const [board, changelog] = await Promise.all([
+      fetchBoardBySlugSSR({ workspaceSlug, boardSlug }),
+      fetchPublicChangelogSSR(workspaceSlug),
+    ])
+    queryClient.setQueryData(
+      queryKeys.boards.bySlug(workspaceSlug, boardSlug),
+      board,
+    )
+    queryClient.setQueryData(
+      queryKeys.changelog.publicByWorkspace(workspaceSlug),
+      changelog,
     )
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound()
@@ -50,42 +38,11 @@ export default async function PublicChangelogPage({
   }
 
   return (
-    <div className="min-h-svh bg-[var(--surface-3)] text-foreground">
-      <PublicTopBar
-        workspaceName={board.workspace.name}
-        workspaceSlug={board.workspace.slug}
-        workspaceId={board.workspace.id}
-        workspaceOwnerId={board.workspace.ownerId}
-        boardSlug={board.board.slug}
-        boardId={board.board.id}
-        activeTab="changelog"
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <PublicChangelogContent
+        workspaceSlug={workspaceSlug}
+        boardSlug={boardSlug}
       />
-
-      <div className="mx-auto max-w-5xl px-6 py-10">
-        <div className="flex flex-col-reverse gap-8 lg:flex-row">
-          <PublicSidebar className="lg:w-60 lg:flex-shrink-0">
-            <ProductActivityCard entries={data.entries} />
-          </PublicSidebar>
-
-          <main className="min-w-0 flex-1">
-            <header className="mb-7">
-              <h1 className="text-2xl font-medium -tracking-[0.02em]">
-                Changelog
-              </h1>
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                What&apos;s new — recent updates and ships.
-              </p>
-            </header>
-
-            <PublicChangelog
-              entries={data.entries}
-              workspaceSlug={data.workspace.slug}
-            />
-          </main>
-        </div>
-      </div>
-
-      <PublicFooter />
-    </div>
+    </HydrationBoundary>
   )
 }

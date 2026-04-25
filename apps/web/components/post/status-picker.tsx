@@ -9,7 +9,7 @@ import {
   isStatusKey,
   type StatusKey,
 } from "@/components/boards/status-icon"
-import { api } from "@/lib/api"
+import { useUpdatePostStatusMutation } from "@/hooks/use-posts"
 
 const STATUSES: StatusKey[] = ["review", "planned", "progress", "shipped"]
 
@@ -28,6 +28,8 @@ export function StatusPicker({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  const mutation = useUpdatePostStatusMutation(postId)
+
   function onSelect(next: StatusKey) {
     if (isPending || next === current) return
     const prev = current
@@ -35,10 +37,7 @@ export function StatusPicker({
     setError(null)
     startTransition(async () => {
       try {
-        const res = await api.patch<{ post: { id: string; status: string } }>(
-          `/api/posts/${postId}/status`,
-          { status: next },
-        )
+        const res = await mutation.mutateAsync(next)
         if (isStatusKey(res.post.status)) {
           setCurrent(res.post.status)
         }

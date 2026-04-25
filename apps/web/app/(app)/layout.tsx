@@ -1,24 +1,23 @@
 import { redirect } from "next/navigation"
 import { type ReactNode } from "react"
 
-import { serverApi } from "@/lib/api"
 import { getSession } from "@/lib/get-session"
+import {
+  fetchDashboardBoardsSSR,
+} from "@/services/dashboard.server"
+import { fetchWorkspacesMeSSR } from "@/services/workspaces.server"
 
-type WorkspaceRow = { id: string }
-type BoardRow = { boardId: string }
-
+// Admin shell guard. Auth + onboarding redirects only — no rendering of
+// remote data here, so we don't need HydrationBoundary at this layer.
+// Per-route pages do their own prefetch + hydrate.
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await getSession()
   if (!session) redirect("/signin")
 
-  const { workspaces } = await serverApi.get<{ workspaces: WorkspaceRow[] }>(
-    "/api/workspaces/me"
-  )
+  const { workspaces } = await fetchWorkspacesMeSSR()
   if (workspaces.length === 0) redirect("/onboarding/workspace")
 
-  const { boards } = await serverApi.get<{ boards: BoardRow[] }>(
-    "/api/dashboard/boards"
-  )
+  const { boards } = await fetchDashboardBoardsSSR()
   if (boards.length === 0) redirect("/onboarding/board")
 
   return (

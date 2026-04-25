@@ -8,7 +8,8 @@ import { ArrowRight } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { useCreateBoardMutation } from "@/hooks/use-boards"
+import { ApiError } from "@/lib/http/api-error"
 
 import { VisibilityRadio } from "./visibility-radio"
 
@@ -21,30 +22,25 @@ function toSlug(input: string): string {
   return s.length >= 2 ? s : "feature-requests"
 }
 
-type CreateBoardResponse = {
-  board: { id: string; slug: string }
-  workspaceSlug: string
-}
-
 export function BoardForm({ workspaceId }: { workspaceId: string }) {
   const router = useRouter()
   const [name, setName] = useState("Feature Requests")
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  const mutation = useCreateBoardMutation()
+
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     startTransition(async () => {
       try {
-        await api.post<CreateBoardResponse>(
-          `/api/workspaces/${workspaceId}/boards`,
-          {
-            name: name.trim(),
-            slug: toSlug(name),
-            visibility: "public",
-          },
-        )
+        await mutation.mutateAsync({
+          workspaceId,
+          name: name.trim(),
+          slug: toSlug(name),
+          visibility: "public",
+        })
         router.push("/dashboard")
         router.refresh()
       } catch (err) {

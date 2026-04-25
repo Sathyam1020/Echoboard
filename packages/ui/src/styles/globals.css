@@ -387,12 +387,14 @@
   /* ---- Feedback Card ----
      Column layout: title+vote row on top, description, meta at bottom.
      Cards sit on a lightly-tinted page bg so the white surface pops.
+     Per design rule (no shadows), hover depth comes from a slightly stronger
+     border — not a drop shadow.
   */
   .feedback-card {
-    @apply flex flex-col gap-2 rounded-xl border bg-card p-4 transition-all;
+    @apply flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors;
   }
   .feedback-card:hover {
-    @apply border-foreground/15 shadow-[0_1px_2px_rgba(0,0,0,0.04)];
+    border-color: color-mix(in srgb, var(--foreground) 16%, transparent);
   }
 
   /* ---- Roadmap Column Header ---- */

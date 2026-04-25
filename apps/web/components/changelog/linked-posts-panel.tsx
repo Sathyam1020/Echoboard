@@ -5,7 +5,8 @@ import { cn } from "@workspace/ui/lib/utils"
 import { Check } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { ApiError } from "@/lib/http/api-error"
+import { fetchShippedPosts } from "@/services/changelog-admin"
 
 import type { ShippedPost } from "./types"
 
@@ -25,8 +26,7 @@ export function LinkedPostsPanel({
 
   useEffect(() => {
     let cancelled = false
-    api
-      .get<{ posts: ShippedPost[] }>("/api/changelog/helpers/shipped-posts")
+    fetchShippedPosts()
       .then((res) => {
         if (cancelled) return
         setAll(res.posts)

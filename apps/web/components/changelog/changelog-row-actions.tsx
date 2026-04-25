@@ -24,7 +24,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import {
+  useDeleteChangelogMutation,
+  usePublishChangelogMutation,
+} from "@/hooks/use-changelog"
+import { ApiError } from "@/lib/http/api-error"
 
 export function ChangelogRowActions({
   entryId,
@@ -38,14 +42,15 @@ export function ChangelogRowActions({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const publishMutation = usePublishChangelogMutation(entryId)
+  const deleteMutation = useDeleteChangelogMutation()
+
   function togglePublish() {
     if (isPending) return
     setError(null)
     startTransition(async () => {
       try {
-        await api.patch(`/api/changelog/${entryId}/publish`, {
-          published: !published,
-        })
+        await publishMutation.mutateAsync(!published)
         router.refresh()
       } catch (err) {
         setError(
@@ -60,7 +65,7 @@ export function ChangelogRowActions({
     setError(null)
     startTransition(async () => {
       try {
-        await api.delete(`/api/changelog/${entryId}`)
+        await deleteMutation.mutateAsync(entryId)
         setConfirmOpen(false)
         router.refresh()
       } catch (err) {

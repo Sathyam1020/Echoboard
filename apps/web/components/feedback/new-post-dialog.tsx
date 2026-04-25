@@ -17,7 +17,8 @@ import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { useCreatePostMutation } from "@/hooks/use-posts"
+import { ApiError } from "@/lib/http/api-error"
 
 export function NewPostDialog({ boardId }: { boardId: string }) {
   const router = useRouter()
@@ -27,15 +28,17 @@ export function NewPostDialog({ boardId }: { boardId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  const mutation = useCreatePostMutation(boardId)
+
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     startTransition(async () => {
       try {
-        const res = await api.post<{ post: { id: string } }>(
-          `/api/boards/${boardId}/posts`,
-          { title: title.trim(), description: description.trim() },
-        )
+        const res = await mutation.mutateAsync({
+          title: title.trim(),
+          description: description.trim(),
+        })
         setTitle("")
         setDescription("")
         setOpen(false)

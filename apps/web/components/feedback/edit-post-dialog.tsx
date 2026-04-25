@@ -18,7 +18,8 @@ import { Pencil } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { useUpdatePostMutation } from "@/hooks/use-posts"
+import { ApiError } from "@/lib/http/api-error"
 
 export function EditPostDialog({
   postId,
@@ -35,6 +36,8 @@ export function EditPostDialog({
   const [description, setDescription] = useState(initialDescription)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  const mutation = useUpdatePostMutation(postId)
 
   function onOpenChange(next: boolean) {
     if (next) {
@@ -59,7 +62,7 @@ export function EditPostDialog({
     }
     startTransition(async () => {
       try {
-        await api.patch(`/api/posts/${postId}`, {
+        await mutation.mutateAsync({
           title: trimmedTitle,
           description: trimmedDesc,
         })

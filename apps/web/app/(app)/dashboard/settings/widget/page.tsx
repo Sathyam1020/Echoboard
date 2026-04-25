@@ -1,47 +1,31 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
 import { headers } from "next/headers"
+import { redirect } from "next/navigation"
 
-import { WidgetTabClient } from "@/components/settings/widget-tab-client"
-import { serverApi } from "@/lib/api"
-
-type SettingsResponse = {
-  settings: {
-    id: string
-    name: string
-    slug: string
-    publicBoardAuth: string
-    requireSignedIdentify: boolean
-    identifySecretKey: string | null
-    ssoRedirectUrl: string | null
-  }
-}
-
-type WidgetConfigResponse = {
-  boardId: string
-  color: string | null
-  position: "bottom-right" | "bottom-left"
-  buttonText: string
-  showBranding: boolean
-}
-
-type DashboardBoard = {
-  boardId: string
-  boardName: string
-  boardSlug: string
-  workspaceSlug: string
-  workspaceName: string
-}
+import { WidgetSettingsContent } from "@/components/settings/widget-settings-content"
+import { queryKeys } from "@/lib/query/keys"
+import { makeQueryClient } from "@/lib/query/query-client"
+import { fetchDashboardBoardsSSR } from "@/services/dashboard.server"
+import { fetchWidgetConfigSSR } from "@/services/widget-config.server"
+import { fetchWorkspaceSettingsSSR } from "@/services/workspaces.server"
 
 export default async function WidgetSettingsPage() {
-  const [{ boards }, { settings }] = await Promise.all([
-    serverApi.get<{ boards: DashboardBoard[] }>("/api/dashboard/boards"),
-    serverApi.get<SettingsResponse>("/api/workspaces/me/settings"),
-  ])
+  const queryClient = makeQueryClient()
 
-  // V1 wires the widget to the first board. Multi-board support comes when
-  // the customizer grows a board switcher (queued for v2).
-  const firstBoard = boards[0]!
-  const widgetCfg = await serverApi.get<WidgetConfigResponse>(
-    `/api/widget/${encodeURIComponent(firstBoard.boardId)}/config`,
+  const [boards, settings] = await Promise.all([
+    fetchDashboardBoardsSSR(),
+    fetchWorkspaceSettingsSSR(),
+  ])
+  if (boards.boards.length === 0) redirect("/onboarding/board")
+  queryClient.setQueryData(queryKeys.dashboard.boards(), boards)
+  queryClient.setQueryData(queryKeys.workspaces.settings(), settings)
+
+  // V1: pin to the first board until the customizer grows a board switcher.
+  const firstBoard = boards.boards[0]!
+  const widgetCfg = await fetchWidgetConfigSSR(firstBoard.boardId)
+  queryClient.setQueryData(
+    queryKeys.widget.config(firstBoard.boardId),
+    widgetCfg,
   )
 
   // Compute the absolute origin (https://echoboard.io in prod) for the
@@ -52,17 +36,8 @@ export default async function WidgetSettingsPage() {
   const origin = `${proto}://${host}`
 
   return (
-    <WidgetTabClient
-      boardId={firstBoard.boardId}
-      origin={origin}
-      initialConfig={{
-        color: widgetCfg.color,
-        position: widgetCfg.position,
-        buttonText: widgetCfg.buttonText,
-        showBranding: widgetCfg.showBranding,
-      }}
-      initialIdentifySecret={settings.identifySecretKey}
-      initialRequireSigned={settings.requireSignedIdentify}
-    />
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <WidgetSettingsContent origin={origin} />
+    </HydrationBoundary>
   )
 }

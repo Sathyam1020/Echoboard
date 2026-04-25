@@ -1,25 +1,13 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
 import { notFound, redirect } from "next/navigation"
 
-import { AppShell } from "@/components/app-shell/app-shell"
-import { AppSidebar } from "@/components/app-shell/app-sidebar"
-import { ChangelogEditor } from "@/components/changelog/changelog-editor"
-import type {
-  ChangelogEntryDetail,
-  ShippedPost,
-} from "@/components/changelog/types"
-import { ApiError, serverApi } from "@/lib/api"
+import { EditChangelogContent } from "@/components/changelog/edit-changelog-content"
 import { getSession } from "@/lib/get-session"
-
-type DashboardBoard = {
-  boardId: string
-  boardName: string
-  boardSlug: string
-  boardVisibility: string
-  workspaceSlug: string
-  workspaceName: string
-  postCount: number
-  createdAt: string
-}
+import { ApiError } from "@/lib/http/api-error"
+import { queryKeys } from "@/lib/query/keys"
+import { makeQueryClient } from "@/lib/query/query-client"
+import { fetchChangelogDetailSSR } from "@/services/changelog-admin.server"
+import { fetchDashboardBoardsSSR } from "@/services/dashboard.server"
 
 export default async function EditChangelogPage({
   params,
@@ -31,11 +19,11 @@ export default async function EditChangelogPage({
 
   const { entryId } = await params
 
-  let detail: { entry: ChangelogEntryDetail }
+  const queryClient = makeQueryClient()
+
+  let detail: Awaited<ReturnType<typeof fetchChangelogDetailSSR>>
   try {
-    detail = await serverApi.get<{ entry: ChangelogEntryDetail }>(
-      `/api/changelog/${encodeURIComponent(entryId)}`,
-    )
+    detail = await fetchChangelogDetailSSR(entryId)
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound()
     if (err instanceof ApiError && err.status === 403) {
@@ -43,49 +31,14 @@ export default async function EditChangelogPage({
     }
     throw err
   }
+  queryClient.setQueryData(queryKeys.changelog.detail(entryId), detail)
 
-  const { boards } = await serverApi.get<{ boards: DashboardBoard[] }>(
-    "/api/dashboard/boards",
-  )
-
-  const initialLinkedPosts: ShippedPost[] = detail.entry.linkedPosts.map(
-    (p) => ({
-      id: p.id,
-      title: p.title,
-      description: "",
-      boardName: p.boardName,
-      boardSlug: p.boardSlug,
-    }),
-  )
-
-  const workspaceName = boards[0]?.workspaceName ?? "Workspace"
+  const boards = await fetchDashboardBoardsSSR()
+  queryClient.setQueryData(queryKeys.dashboard.boards(), boards)
 
   return (
-    <AppShell
-      sidebar={
-        <AppSidebar
-          workspaceName={workspaceName}
-          boards={boards.map((b) => ({
-            id: b.boardId,
-            name: b.boardName,
-            slug: b.boardSlug,
-            workspaceSlug: b.workspaceSlug,
-            postCount: b.postCount,
-          }))}
-          activeItem="changelog"
-          user={{
-            name: session.user.name,
-            email: session.user.email,
-            image: session.user.image,
-          }}
-        />
-      }
-    >
-      <ChangelogEditor
-        mode="edit"
-        entry={detail.entry}
-        initialLinkedPosts={initialLinkedPosts}
-      />
-    </AppShell>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <EditChangelogContent entryId={entryId} />
+    </HydrationBoundary>
   )
 }

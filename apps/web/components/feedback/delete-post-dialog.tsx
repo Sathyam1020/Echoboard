@@ -16,7 +16,8 @@ import { Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { useDeletePostMutation } from "@/hooks/use-posts"
+import { ApiError } from "@/lib/http/api-error"
 
 export function DeletePostDialog({ postId }: { postId: string }) {
   const router = useRouter()
@@ -24,12 +25,14 @@ export function DeletePostDialog({ postId }: { postId: string }) {
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
 
+  const mutation = useDeletePostMutation(postId)
+
   function onConfirm() {
     if (isPending) return
     setError(null)
     startTransition(async () => {
       try {
-        await api.delete(`/api/posts/${postId}`)
+        await mutation.mutateAsync()
         setOpen(false)
         router.push("/dashboard/feedback")
         router.refresh()

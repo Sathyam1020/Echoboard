@@ -16,7 +16,8 @@ import { Textarea } from "@workspace/ui/components/textarea"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { useCreatePostMutation } from "@/hooks/use-posts"
+import { ApiError } from "@/lib/http/api-error"
 
 import { IdentityModal } from "./identity-modal"
 import { useVisitorIdentity } from "./use-visitor-identity"
@@ -39,9 +40,10 @@ export function SubmitPostDialog({
   const [identityOpen, setIdentityOpen] = useState(false)
 
   const identityCtx = useVisitorIdentity({ workspaceId, workspaceOwnerId })
+  const createMutation = useCreatePostMutation(boardId)
 
   async function performSubmit() {
-    await api.post(`/api/boards/${boardId}/posts`, {
+    await createMutation.mutateAsync({
       title: title.trim(),
       description: description.trim(),
     })

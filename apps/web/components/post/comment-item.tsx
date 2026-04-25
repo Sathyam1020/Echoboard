@@ -15,7 +15,8 @@ import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 import { useState, useTransition } from "react"
 
-import { api, ApiError } from "@/lib/api"
+import { useDeleteCommentMutation } from "@/hooks/use-comments"
+import { ApiError } from "@/lib/http/api-error"
 import { authClient } from "@/lib/auth-client"
 import { renderLinkifiedText } from "@/lib/linkify"
 import { formatRelativeTime } from "@/lib/relative-time"
@@ -70,6 +71,8 @@ export function CommentItem({
   const [deletePending, startDelete] = useTransition()
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  const deleteMutation = useDeleteCommentMutation(postId)
+
   const hasChildren = node.children.length > 0
   const hiddenCount = collapsed ? countDescendants(node) : 0
 
@@ -78,9 +81,7 @@ export function CommentItem({
     startDelete(async () => {
       try {
         setDeleteError(null)
-        const res = await api.delete<{ comment: CommentRow }>(
-          `/api/comments/${node.id}`,
-        )
+        const res = await deleteMutation.mutateAsync(node.id)
         onUpdate(res.comment)
       } catch (err) {
         const message =

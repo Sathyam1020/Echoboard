@@ -8,7 +8,8 @@ import { Switch } from "@workspace/ui/components/switch"
 import { cn } from "@workspace/ui/lib/utils"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { useUpdateWidgetConfigMutation } from "@/hooks/use-widget-config"
+import { ApiError } from "@/lib/http/api-error"
 
 export type WidgetConfig = {
   color: string | null
@@ -33,6 +34,8 @@ export function WidgetCustomizerForm({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  const mutation = useUpdateWidgetConfigMutation(boardId)
+
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
@@ -42,7 +45,7 @@ export function WidgetCustomizerForm({
         if (trimmed && !/^#?[0-9a-fA-F]{6}$/.test(trimmed)) {
           throw new Error("Color must be a 6-digit hex (e.g. #0F6E56)")
         }
-        await api.patch(`/api/boards/${boardId}/widget-config`, {
+        await mutation.mutateAsync({
           color: trimmed === "" ? null : trimmed,
           position,
           buttonText: buttonText.trim(),

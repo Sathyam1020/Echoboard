@@ -20,9 +20,9 @@ import {
   ROADMAP_COLUMNS,
   groupPostsForRoadmap,
 } from "@/components/roadmap/group-posts"
-import { ApiError } from "@/lib/api"
-import type { VisitorIdentity } from "@/lib/visitor-client"
-import { setWidgetBearer, widgetApi } from "@/lib/widget-api"
+import { ApiError } from "@/lib/http/api-error"
+import { setWidgetBearer, widgetHttp } from "@/lib/http/widget-axios"
+import type { VisitorIdentity } from "@/services/visitors"
 import type { PostRow } from "@/components/boards/types"
 
 type WidgetConfig = {
@@ -69,10 +69,10 @@ export function WidgetUI({
         if (token) {
           // Pull the identified visitor — confirms the token + populates
           // the "submitting as …" line.
-          widgetApi
+          widgetHttp
             .get<{ visitor: VisitorIdentity }>("/api/visitors/me")
             .then((r) => {
-              if (!cancelled) setVisitor(r.visitor)
+              if (!cancelled) setVisitor(r.data.visitor)
             })
             .catch(() => {})
         } else {
@@ -88,10 +88,10 @@ export function WidgetUI({
     }
 
     // Same-origin / preview fallback: try the cookie immediately.
-    widgetApi
+    widgetHttp
       .get<{ visitor: VisitorIdentity }>("/api/visitors/me")
       .then((r) => {
-        if (!cancelled) setVisitor(r.visitor)
+        if (!cancelled) setVisitor(r.data.visitor)
       })
       .catch(() => {})
 
@@ -240,11 +240,12 @@ function SubmitTab({
     setError(null)
     startTransition(async () => {
       try {
-        // 1. Identify if needed. Use widgetApi (Bearer-aware) so the token
-        //    is captured for subsequent calls in the same iframe session.
+        // 1. Identify if needed. Use widgetHttp (Bearer-aware) so the
+        //    token is captured for subsequent calls in the same iframe
+        //    session.
         let v = visitor
         if (!v) {
-          const guestRes = await widgetApi.post<{
+          const guestRes = await widgetHttp.post<{
             visitorToken: string
             visitor: VisitorIdentity
           }>("/api/visitors/guest", {
@@ -252,8 +253,8 @@ function SubmitTab({
             email: email.trim(),
             name: name.trim() || undefined,
           })
-          setWidgetBearer(guestRes.visitorToken)
-          v = guestRes.visitor
+          setWidgetBearer(guestRes.data.visitorToken)
+          v = guestRes.data.visitor
           onIdentified(v)
           // Tell the loader so it can persist the token and reuse it on
           // subsequent panel opens.
@@ -261,19 +262,19 @@ function SubmitTab({
             window.parent.postMessage(
               {
                 type: "echoboard:visitor-token-set",
-                token: guestRes.visitorToken,
+                token: guestRes.data.visitorToken,
               },
               "*",
             )
           }
         }
         // 2. Submit the post — Bearer carries auth.
-        const res = await widgetApi.post<{ post: PostRow }>(
+        const res = await widgetHttp.post<{ post: PostRow }>(
           `/api/boards/${config.boardId}/posts`,
           { title: title.trim(), description: description.trim() },
         )
         onPosted({
-          ...res.post,
+          ...res.data.post,
           voteCount: 0,
           hasVoted: false,
           commentCount: 0,
@@ -428,12 +429,12 @@ function BoardTab({
       }))
       setPendingId(postId)
       try {
-        const res = await widgetApi.post<{
+        const res = await widgetHttp.post<{
           hasVoted: boolean
           voteCount: number
         }>(`/api/posts/${postId}/vote`, {})
-        setVoted((s) => ({ ...s, [postId]: res.hasVoted }))
-        setCounts((s) => ({ ...s, [postId]: res.voteCount }))
+        setVoted((s) => ({ ...s, [postId]: res.data.hasVoted }))
+        setCounts((s) => ({ ...s, [postId]: res.data.voteCount }))
       } catch {
         setVoted((s) => ({ ...s, [postId]: prevVoted }))
         setCounts((s) => ({ ...s, [postId]: prevCount }))

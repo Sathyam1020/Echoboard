@@ -8,7 +8,11 @@ import { useState, useTransition } from "react"
 import { Avatar } from "@/components/boards/avatar"
 import { IdentityModal } from "@/components/boards/identity-modal"
 import { useVisitorIdentity } from "@/components/boards/use-visitor-identity"
-import { api, ApiError } from "@/lib/api"
+import {
+  useCreateCommentMutation,
+  useUpdateCommentMutation,
+} from "@/hooks/use-comments"
+import { ApiError } from "@/lib/http/api-error"
 import { authClient } from "@/lib/auth-client"
 import type { VisitorIdentity } from "@/lib/visitor-client"
 
@@ -68,6 +72,11 @@ export function CommentForm(props: Props) {
   const [isPending, startTransition] = useTransition()
   const [identityModalOpen, setIdentityModalOpen] = useState(false)
 
+  // Always call both hooks (rules of hooks). The mutation that doesn't
+  // apply to the current mode just sits idle.
+  const createMutation = useCreateCommentMutation(props.postId)
+  const updateMutation = useUpdateCommentMutation(props.postId)
+
   const empty = body.trim().length === 0
   // Edit mode requires the existing user/visitor identity — no email prompt.
   // Top + reply on a visitor-aware surface allow guests; otherwise require
@@ -80,26 +89,23 @@ export function CommentForm(props: Props) {
   async function performWrite(): Promise<void> {
     const text = body.trim()
     if (props.mode === "edit") {
-      const res = await api.patch<{ comment: CommentRow }>(
-        `/api/comments/${props.commentId}`,
-        { body: text },
-      )
+      const res = await updateMutation.mutateAsync({
+        commentId: props.commentId,
+        body: text,
+      })
       props.onSuccess(res.comment)
       return
     }
     if (props.mode === "reply") {
-      const res = await api.post<{ comment: CommentRow }>(
-        `/api/posts/${props.postId}/comments`,
-        { body: text, parentId: props.parentId },
-      )
+      const res = await createMutation.mutateAsync({
+        body: text,
+        parentId: props.parentId,
+      })
       props.onSuccess(res.comment)
       setBody("")
       return
     }
-    const res = await api.post<{ comment: CommentRow }>(
-      `/api/posts/${props.postId}/comments`,
-      { body: text },
-    )
+    const res = await createMutation.mutateAsync({ body: text })
     props.onSuccess(res.comment)
     setBody("")
   }

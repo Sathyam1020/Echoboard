@@ -9,7 +9,13 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useRef, useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import {
+  useCreateChangelogMutation,
+  usePublishChangelogMutation,
+  useUpdateChangelogMutation,
+} from "@/hooks/use-changelog"
+import { ApiError } from "@/lib/http/api-error"
+import { publishChangelogEntry } from "@/services/changelog-admin"
 
 import { applyMarkdown, type MarkdownAction } from "./apply-markdown"
 import { EditorToolbar } from "./editor-toolbar"
@@ -41,6 +47,12 @@ export function ChangelogEditor({
   const wasPublished = Boolean(entry?.publishedAt)
   const displayTitle = title.trim().length > 0 ? title : "Untitled"
 
+  const createMutation = useCreateChangelogMutation()
+  // Edit-mode mutations are keyed by the entry id — pass empty when in
+  // create mode (hook stays idle, never invoked).
+  const updateMutation = useUpdateChangelogMutation(entry?.id ?? "")
+  const publishExistingMutation = usePublishChangelogMutation(entry?.id ?? "")
+
   const onToolbarAction = useCallback(
     (action: MarkdownAction) => {
       const ta = textareaRef.current
@@ -69,22 +81,17 @@ export function ChangelogEditor({
       postIds: linkedIds,
     }
     if (mode === "create") {
-      const res = await api.post<{ entry: ChangelogEntry }>(
-        "/api/changelog",
-        payload,
-      )
+      const res = await createMutation.mutateAsync(payload)
       if (publish === true) {
-        await api.patch(`/api/changelog/${res.entry.id}/publish`, {
-          published: true,
-        })
+        // Publish the freshly-created entry. Hook is keyed by id which we
+        // only just learned, so call the service directly.
+        await publishChangelogEntry(res.entry.id, { published: true })
       }
       return res.entry.id
     }
-    await api.patch(`/api/changelog/${entry!.id}`, payload)
+    await updateMutation.mutateAsync(payload)
     if (publish !== null && publish !== wasPublished) {
-      await api.patch(`/api/changelog/${entry!.id}/publish`, {
-        published: publish,
-      })
+      await publishExistingMutation.mutateAsync(publish)
     }
     return entry!.id
   }
@@ -208,7 +215,7 @@ export function ChangelogEditor({
                     })
                   : "Draft"}
               </div>
-              <h1 className="mt-2 text-[32px] font-medium -tracking-[0.02em]">
+              <h1 className="mt-2 text-2xl font-medium -tracking-[0.02em] sm:text-[32px]">
                 {displayTitle}
               </h1>
               <div className="mt-5">
@@ -228,7 +235,7 @@ export function ChangelogEditor({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="What did you ship?"
                 maxLength={200}
-                className="w-full border-0 bg-transparent px-0 py-2 text-[32px] font-medium leading-tight -tracking-[0.02em] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+                className="w-full border-0 bg-transparent px-0 py-2 text-2xl font-medium leading-tight -tracking-[0.02em] text-foreground placeholder:text-muted-foreground/60 focus:outline-none sm:text-[32px]"
               />
               <EditorToolbar onAction={onToolbarAction} />
               <Textarea

@@ -8,7 +8,8 @@ import { ArrowRight, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { useCreateWorkspaceMutation } from "@/hooks/use-workspaces"
+import { ApiError } from "@/lib/http/api-error"
 
 function slugify(input: string): string {
   return input
@@ -26,6 +27,8 @@ export function WorkspaceForm() {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  const mutation = useCreateWorkspaceMutation()
+
   function onNameChange(value: string) {
     setName(value)
     if (!slugTouched) setSlug(slugify(value))
@@ -41,7 +44,7 @@ export function WorkspaceForm() {
     setError(null)
     startTransition(async () => {
       try {
-        await api.post("/api/workspaces", {
+        await mutation.mutateAsync({
           name: name.trim(),
           slug: slug.trim(),
         })

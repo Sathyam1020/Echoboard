@@ -6,7 +6,8 @@ import { Pin, PinOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { ApiError, api } from "@/lib/api"
+import { usePinPostMutation } from "@/hooks/use-posts"
+import { ApiError } from "@/lib/http/api-error"
 
 export function PinToggle({
   postId,
@@ -20,6 +21,8 @@ export function PinToggle({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  const mutation = usePinPostMutation(postId)
+
   function onToggle() {
     if (isPending) return
     const prev = pinned
@@ -28,7 +31,7 @@ export function PinToggle({
     setError(null)
     startTransition(async () => {
       try {
-        await api.patch(`/api/posts/${postId}/pin`, { pinned: next })
+        await mutation.mutateAsync(next)
         router.refresh()
       } catch (err) {
         setPinned(prev)

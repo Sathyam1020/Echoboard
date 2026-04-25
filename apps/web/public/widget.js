@@ -109,7 +109,8 @@
     ".panel-right{right:20px;} .panel-left{left:20px;}",
     ".panel.open{transform:none;opacity:1;}",
     ".panel iframe{width:100%;height:100%;border:0;display:block;background:#fff;}",
-    "@media(max-width:480px){.panel{width:calc(100vw - 24px);height:calc(100vh - 100px);left:12px!important;right:12px!important;}}",
+    "@media(max-width:640px){.panel{width:calc(100vw - 24px);height:calc(100vh - 100px);left:12px!important;right:12px!important;bottom:72px;}}",
+    "@media(max-width:640px){.btn{bottom:14px;}}",
   ].join("")
   root.appendChild(style)
 

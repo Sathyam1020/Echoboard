@@ -1,8 +1,10 @@
 "use client"
 
+import { Inbox, SearchX } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import type { PostRow } from "@/components/boards/types"
+import { EmptyHint } from "@/components/common/empty-hint"
 
 import { FeedbackCard } from "./feedback-card"
 import {
@@ -52,7 +54,19 @@ export function FeedbackList({ posts }: { posts: PostRow[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState hasSearch={search.trim().length > 0} />
+        search.trim().length > 0 ? (
+          <EmptyHint
+            icon={SearchX}
+            title="No matching posts"
+            description="Try a different search."
+          />
+        ) : (
+          <EmptyHint
+            icon={Inbox}
+            title="No posts yet"
+            description="When users submit feedback, it shows up here."
+          />
+        )
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map((p) => (
@@ -60,27 +74,6 @@ export function FeedbackList({ posts }: { posts: PostRow[] }) {
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-function EmptyState({ hasSearch }: { hasSearch: boolean }) {
-  if (hasSearch) {
-    return (
-      <div className="empty-state rounded-lg border border-border bg-card px-6 py-12 text-center">
-        <p className="text-sm font-medium">No matching posts</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          Try a different search.
-        </p>
-      </div>
-    )
-  }
-  return (
-    <div className="rounded-lg border border-border bg-card px-6 py-12 text-center">
-      <p className="text-sm font-medium">No posts yet</p>
-      <p className="mt-1 text-[13px] text-muted-foreground">
-        When users submit feedback, it shows up here.
-      </p>
     </div>
   )
 }

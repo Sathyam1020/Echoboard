@@ -13,7 +13,7 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { useState, useTransition } from "react"
 
-import { ApiError } from "@/lib/api"
+import { ApiError } from "@/lib/http/api-error"
 import { signInAsGuest, type VisitorIdentity } from "@/lib/visitor-client"
 
 export function IdentityModal({

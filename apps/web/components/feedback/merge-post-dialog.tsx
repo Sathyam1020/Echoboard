@@ -18,7 +18,9 @@ import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, useTransition } from "react"
 
 import type { PostRow } from "@/components/boards/types"
-import { ApiError, api } from "@/lib/api"
+import { useMergePostMutation } from "@/hooks/use-posts"
+import { fetchAdminPostsByBoard } from "@/services/dashboard"
+import { ApiError } from "@/lib/http/api-error"
 
 export function MergePostDialog({
   postId,
@@ -38,11 +40,12 @@ export function MergePostDialog({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, startSubmit] = useTransition()
 
+  const mergeMutation = useMergePostMutation(postId)
+
   useEffect(() => {
     if (!open || posts !== null) return
     let cancelled = false
-    api
-      .get<{ posts: PostRow[] }>(`/api/boards/${boardId}/posts`)
+    fetchAdminPostsByBoard(boardId)
       .then((res) => {
         if (cancelled) return
         setPosts(res.posts.filter((p) => p.id !== postId))
@@ -74,7 +77,7 @@ export function MergePostDialog({
     setSubmitError(null)
     startSubmit(async () => {
       try {
-        await api.post(`/api/posts/${postId}/merge`, { targetPostId: targetId })
+        await mergeMutation.mutateAsync(targetId)
         setOpen(false)
         router.push(`/dashboard/feedback/${targetId}`)
         router.refresh()

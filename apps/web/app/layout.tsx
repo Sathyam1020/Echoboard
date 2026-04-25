@@ -2,6 +2,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { Inter, JetBrains_Mono } from "next/font/google"
 
 import "@workspace/ui/globals.css"
+import { Providers } from "@/app/providers"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils"
 
@@ -35,9 +36,11 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider>
-          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider>
+            <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   )

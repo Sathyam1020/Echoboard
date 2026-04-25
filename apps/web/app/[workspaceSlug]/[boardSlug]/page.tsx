@@ -1,24 +1,11 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
 import { notFound } from "next/navigation"
 
-import { BoardPosts } from "@/components/boards/board-posts"
-import { BoardsListCard } from "@/components/boards/boards-list-card"
-import { PublicFooter } from "@/components/boards/public-footer"
-import { PublicSidebar } from "@/components/boards/public-sidebar"
-import { PublicTopBar } from "@/components/boards/public-top-bar"
-import type { PostRow } from "@/components/boards/types"
-import { ApiError, serverApi } from "@/lib/api"
-
-type BoardPageData = {
-  workspace: { id: string; name: string; slug: string; ownerId: string }
-  board: {
-    id: string
-    name: string
-    slug: string
-    visibility: string
-  }
-  posts: PostRow[]
-  workspaceBoards: { id: string; name: string; slug: string }[]
-}
+import { PublicBoardContent } from "@/components/boards/public-board-content"
+import { ApiError } from "@/lib/http/api-error"
+import { makeQueryClient } from "@/lib/query/query-client"
+import { queryKeys } from "@/lib/query/keys"
+import { fetchBoardBySlugSSR } from "@/services/boards.server"
 
 export default async function BoardPage({
   params,
@@ -27,66 +14,26 @@ export default async function BoardPage({
 }) {
   const { workspaceSlug, boardSlug } = await params
 
-  let data: BoardPageData
+  // Per-request query client (singletons leak data between requests on the
+  // server). Prefetch the board + sibling boards + posts in one shot so the
+  // hydrated client component can read everything from cache.
+  const queryClient = makeQueryClient()
+  const cacheKey = queryKeys.boards.bySlug(workspaceSlug, boardSlug)
+
   try {
-    data = await serverApi.get<BoardPageData>(
-      `/api/boards/by-slug/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}`,
-    )
+    const data = await fetchBoardBySlugSSR({ workspaceSlug, boardSlug })
+    queryClient.setQueryData(cacheKey, data)
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      notFound()
-    }
+    if (err instanceof ApiError && err.status === 404) notFound()
     throw err
   }
 
   return (
-    <div className="min-h-svh bg-[var(--surface-3)] text-foreground">
-      <PublicTopBar
-        workspaceName={data.workspace.name}
-        workspaceSlug={data.workspace.slug}
-        workspaceId={data.workspace.id}
-        workspaceOwnerId={data.workspace.ownerId}
-        boardSlug={data.board.slug}
-        boardId={data.board.id}
-        activeTab="feedback"
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <PublicBoardContent
+        workspaceSlug={workspaceSlug}
+        boardSlug={boardSlug}
       />
-
-      <div className="mx-auto max-w-5xl px-6 py-10">
-        <div className="flex flex-col-reverse gap-8 lg:flex-row">
-          <PublicSidebar className="lg:w-60 lg:flex-shrink-0">
-            <BoardsListCard
-              boards={data.workspaceBoards}
-              workspaceSlug={data.workspace.slug}
-              activeBoardSlug={data.board.slug}
-            />
-          </PublicSidebar>
-
-          <main className="min-w-0 flex-1">
-            <header className="mb-7">
-              <h1 className="text-2xl font-medium -tracking-[0.02em]">
-                {data.board.name === "Feature Requests"
-                  ? "What should we build next?"
-                  : data.board.name}
-              </h1>
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                Vote on ideas, submit your own, or comment on what&apos;s
-                important to you.
-              </p>
-            </header>
-
-            <BoardPosts
-              boardId={data.board.id}
-              workspaceId={data.workspace.id}
-              workspaceOwnerId={data.workspace.ownerId}
-              posts={data.posts}
-              workspaceSlug={workspaceSlug}
-              boardSlug={boardSlug}
-            />
-          </main>
-        </div>
-      </div>
-
-      <PublicFooter />
-    </div>
+    </HydrationBoundary>
   )
 }

@@ -16,8 +16,13 @@ import { Switch } from "@workspace/ui/components/switch"
 import { cn } from "@workspace/ui/lib/utils"
 import { Check, Copy, Eye, EyeOff, RefreshCw } from "lucide-react"
 import { useState, useTransition } from "react"
+import { toast } from "sonner"
 
-import { ApiError, api } from "@/lib/api"
+import {
+  useRegenerateIdentifyKeyMutation,
+  useUpdateWorkspaceSettingsMutation,
+} from "@/hooks/use-workspaces"
+import { ApiError } from "@/lib/http/api-error"
 
 const NODE_SAMPLE = `import { createHmac } from "node:crypto"
 const SECRET = process.env.ECHOBOARD_IDENTIFY_SECRET
@@ -100,18 +105,22 @@ export function WidgetHmacSection({
   const [isRegenerating, startRegen] = useTransition()
   const [isToggling, startToggle] = useTransition()
 
+  const regenMutation = useRegenerateIdentifyKeyMutation()
+  const settingsMutation = useUpdateWorkspaceSettingsMutation()
+
   function regenerate() {
     startRegen(async () => {
       try {
-        const res = await api.post<{
-          settings: { identifySecretKey: string | null }
-        }>("/api/workspaces/me/settings/regenerate-identify-key", {})
+        const res = await regenMutation.mutateAsync()
         setSecret(res.settings.identifySecretKey ?? "")
+        toast.success("Identify secret regenerated", {
+          description:
+            "Update your backend's ECHOBOARD_IDENTIFY_SECRET env var.",
+        })
       } catch (err) {
-        if (err instanceof ApiError) {
-          // Surface inline; keep simple for now.
-          alert(err.message)
-        }
+        toast.error(
+          err instanceof ApiError ? err.message : "Failed to regenerate",
+        )
       }
     })
   }
@@ -120,13 +129,18 @@ export function WidgetHmacSection({
     setRequireSigned(next)
     startToggle(async () => {
       try {
-        await api.patch("/api/workspaces/me/settings", {
-          requireSignedIdentify: next,
-        })
+        await settingsMutation.mutateAsync({ requireSignedIdentify: next })
+        toast.success(
+          next
+            ? "Signed identify tokens are now required"
+            : "Unsigned identify is allowed again",
+        )
       } catch (err) {
         // Roll back
         setRequireSigned(!next)
-        if (err instanceof ApiError) alert(err.message)
+        toast.error(
+          err instanceof ApiError ? err.message : "Failed to update setting",
+        )
       }
     })
   }

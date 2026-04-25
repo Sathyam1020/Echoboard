@@ -11,7 +11,8 @@ import {
 import { useMemo, useState, useTransition } from "react"
 
 import type { PostRow } from "@/components/boards/types"
-import { ApiError, api } from "@/lib/api"
+import { ApiError } from "@/lib/http/api-error"
+import { updatePostStatus } from "@/services/posts-admin"
 
 import { AdminDraggableCard } from "./admin-draggable-card"
 import { AdminDroppableColumn } from "./admin-droppable-column"
@@ -57,7 +58,7 @@ export function AdminRoadmap({
 
     startTransition(async () => {
       try {
-        await api.patch(`/api/posts/${postId}/status`, { status: nextStatus })
+        await updatePostStatus(postId, { status: nextStatus })
       } catch (err) {
         // Revert.
         setPosts((prev) =>

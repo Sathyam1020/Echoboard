@@ -35,51 +35,62 @@ export function PublicTopBar({
 
   return (
     <div className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-6 py-3">
-        <Link href={boardHref} className="flex items-center gap-2.5">
-          <span className="flex size-[22px] items-center justify-center rounded-md bg-foreground font-mono text-[12px] font-medium text-background">
-            {initial}
-          </span>
-          <span className="text-sm font-medium">{workspaceName}</span>
-        </Link>
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        {/* Two-row layout below sm: identity + CTA on top, tab strip below.
+            sm+ collapses both rows into one. The tab strip is independently
+            horizontally-scrollable on phones so long workspace names never
+            squeeze the nav. */}
+        <div className="flex flex-wrap items-center gap-3 pt-3 sm:flex-nowrap sm:gap-4 sm:py-3">
+          <Link
+            href={boardHref}
+            className="flex min-w-0 items-center gap-2.5"
+          >
+            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md bg-foreground font-mono text-[12px] font-medium text-background">
+              {initial}
+            </span>
+            <span className="truncate text-sm font-medium">
+              {workspaceName}
+            </span>
+          </Link>
 
-        <nav className="ml-5 flex gap-1">
-          {tabs.map((t) => {
-            const active = activeTab === t.id
-            const cls = cn(
-              "flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] transition-colors",
-              active
-                ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground",
-              t.soon && "cursor-not-allowed opacity-70",
-              !t.soon && !active && "hover:text-foreground",
-            )
-            if (t.soon || !t.href) {
-              return (
-                <span key={t.id} aria-disabled={true} className={cls}>
-                  {t.label}
-                  {t.soon ? (
-                    <span className="text-[10px] tracking-wider text-foreground-subtle uppercase">
-                      Soon
-                    </span>
-                  ) : null}
-                </span>
+          <nav className="-mx-4 order-3 flex w-screen max-w-none gap-1 overflow-x-auto px-4 pb-2 scrollbar-thin sm:order-2 sm:mx-0 sm:ml-5 sm:w-auto sm:overflow-visible sm:px-0 sm:pb-0">
+            {tabs.map((t) => {
+              const active = activeTab === t.id
+              const cls = cn(
+                "flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-[13px] transition-colors",
+                active
+                  ? "bg-muted font-medium text-foreground"
+                  : "text-muted-foreground",
+                t.soon && "cursor-not-allowed opacity-70",
+                !t.soon && !active && "hover:text-foreground",
               )
-            }
-            return (
-              <Link key={t.id} href={t.href} className={cls}>
-                {t.label}
-              </Link>
-            )
-          })}
-        </nav>
+              if (t.soon || !t.href) {
+                return (
+                  <span key={t.id} aria-disabled={true} className={cls}>
+                    {t.label}
+                    {t.soon ? (
+                      <span className="text-[10px] tracking-wider text-foreground-subtle uppercase">
+                        Soon
+                      </span>
+                    ) : null}
+                  </span>
+                )
+              }
+              return (
+                <Link key={t.id} href={t.href} className={cls}>
+                  {t.label}
+                </Link>
+              )
+            })}
+          </nav>
 
-        <div className="ml-auto flex items-center gap-3">
-          <SubmitPostDialog
-            boardId={boardId}
-            workspaceId={workspaceId}
-            workspaceOwnerId={workspaceOwnerId}
-          />
+          <div className="order-2 ml-auto flex shrink-0 items-center gap-3 sm:order-3">
+            <SubmitPostDialog
+              boardId={boardId}
+              workspaceId={workspaceId}
+              workspaceOwnerId={workspaceOwnerId}
+            />
+          </div>
         </div>
       </div>
     </div>

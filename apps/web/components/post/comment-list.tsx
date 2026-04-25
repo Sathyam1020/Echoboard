@@ -1,6 +1,9 @@
 "use client"
 
+import { MessageSquare } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
+
+import { EmptyHint } from "@/components/common/empty-hint"
 
 import type { CommentRow } from "../boards/types"
 
@@ -78,14 +81,12 @@ export function CommentList({
       />
 
       {tree.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
-          <p className="text-[13.5px] font-medium text-foreground">
-            No comments yet
-          </p>
-          <p className="mt-1 text-[12.5px] text-muted-foreground">
-            Be the first to share your thoughts.
-          </p>
-        </div>
+        <EmptyHint
+          variant="soft"
+          icon={MessageSquare}
+          title="No comments yet"
+          description="Be the first to share your thoughts."
+        />
       ) : (
         <div className="flex flex-col gap-5">
           {tree.map((node) => (

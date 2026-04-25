@@ -1,19 +1,21 @@
-import { ApiError, api } from "./api"
+// Compatibility re-export — the previous standalone visitor-client utilities
+// now live in `services/visitors.ts`. Existing imports of `signInAsGuest`,
+// `signInFromSession`, `signOutVisitor`, `getVisitorMe`, and the
+// `VisitorIdentity` type continue to work unchanged.
+import { ApiError } from "./http/api-error"
+import {
+  bridgeVisitorFromSession,
+  createGuestVisitor,
+  fetchVisitorMe,
+  signOutVisitor as signOutVisitorService,
+  type VisitorIdentity,
+} from "@/services/visitors"
 
-export type VisitorIdentity = {
-  id: string
-  workspaceId: string
-  name: string | null
-  email: string | null
-  avatarUrl: string | null
-  authMethod: string
-}
-
-type VisitorResponse = { visitor: VisitorIdentity; visitorToken: string }
+export type { VisitorIdentity }
 
 export async function getVisitorMe(): Promise<VisitorIdentity | null> {
   try {
-    const res = await api.get<{ visitor: VisitorIdentity }>("/api/visitors/me")
+    const res = await fetchVisitorMe()
     return res.visitor
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) return null
@@ -26,20 +28,14 @@ export async function signInAsGuest(input: {
   email: string
   name?: string
 }): Promise<VisitorIdentity> {
-  const res = await api.post<VisitorResponse>("/api/visitors/guest", input)
+  const res = await createGuestVisitor(input)
   return res.visitor
 }
 
 export async function signInFromSession(
   workspaceId: string,
 ): Promise<{ visitor: VisitorIdentity | null; isOwner: boolean }> {
-  const res = await api.post<{
-    visitor: VisitorIdentity | null
-    isOwner: boolean
-  }>("/api/visitors/from-session", { workspaceId })
-  return { visitor: res.visitor, isOwner: res.isOwner }
+  return bridgeVisitorFromSession({ workspaceId })
 }
 
-export async function signOutVisitor(): Promise<void> {
-  await api.post("/api/visitors/sign-out", {})
-}
+export const signOutVisitor = signOutVisitorService

@@ -53,6 +53,8 @@ export function PostCard({
           orientation="horizontal"
           workspaceId={workspaceId}
           workspaceOwnerId={workspaceOwnerId}
+          workspaceSlug={workspaceSlug}
+          boardSlug={boardSlug}
         />
       </div>
 

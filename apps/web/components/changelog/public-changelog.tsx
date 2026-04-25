@@ -1,3 +1,7 @@
+import { Sparkles } from "lucide-react"
+
+import { EmptyHint } from "@/components/common/empty-hint"
+
 import { PublicEntry } from "./public-entry"
 import type { PublicChangelogEntry } from "./types"
 
@@ -10,12 +14,11 @@ export function PublicChangelog({
 }) {
   if (entries.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card px-6 py-12 text-center">
-        <p className="text-sm font-medium">No changelog entries yet</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          Check back soon — we&apos;ll post updates here as they ship.
-        </p>
-      </div>
+      <EmptyHint
+        icon={Sparkles}
+        title="No changelog entries yet"
+        description="Check back soon — we'll post updates here as they ship."
+      />
     )
   }
 

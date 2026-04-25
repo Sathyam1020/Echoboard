@@ -11,7 +11,7 @@ export function AppTopbar({
   actions?: ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-border bg-background px-4 py-4 sm:px-8 sm:py-5">
+    <div className="flex flex-col gap-3 border-b border-border bg-background px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-8 sm:py-5">
       <div className="flex min-w-0 items-start gap-2">
         {/* Mobile-only drawer trigger. Desktop uses the rail/keyboard shortcut. */}
         <SidebarTrigger className="-ml-1.5 mt-0.5 md:hidden" />
@@ -23,7 +23,9 @@ export function AppTopbar({
         </div>
       </div>
       {actions ? (
-        <div className="flex flex-shrink-0 items-center gap-2">{actions}</div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {actions}
+        </div>
       ) : null}
     </div>
   )
