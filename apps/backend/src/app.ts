@@ -21,6 +21,25 @@ export function createApp(): Express {
   app.set("trust proxy", 1)
 
   app.use(helmet())
+
+  // Public widget surfaces — embedded on any 3rd-party SaaS site, so they
+  // need permissive CORS. credentials:false because cookies don't survive
+  // 3rd-party iframe contexts in modern browsers anyway; the widget uses
+  // Bearer tokens for cross-origin calls.
+  const widgetCors = cors({
+    origin: true,
+    credentials: false,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+  app.use("/api/widget", widgetCors)
+  app.use("/api/visitors/guest", widgetCors)
+  app.use("/api/visitors/identify", widgetCors)
+  app.use("/api/visitors/me", widgetCors)
+  app.use("/api/visitors/sign-out", widgetCors)
+
+  // Default CORS — locked to the configured origins. Carries cookies for
+  // the public board (same-origin) + the dashboard.
   app.use(
     cors({
       origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(","),

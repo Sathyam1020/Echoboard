@@ -18,7 +18,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
-import { TrendingUpIcon } from "@workspace/ui/components/trending-up"
 import { ChevronDown } from "lucide-react"
 import Link from "next/link"
 
@@ -122,7 +121,12 @@ export function AppSidebar({
               href="/dashboard/changelog"
               isActive={activeItem === "changelog"}
             />
-            <AnimatedNavItemDisabled icon={TrendingUpIcon} label="Analytics" />
+            <AnimatedNavItem
+              icon={SettingsIcon}
+              label="Settings"
+              href="/dashboard/settings"
+              isActive={activeItem === "settings"}
+            />
           </SidebarMenu>
         </SidebarGroup>
 
@@ -165,10 +169,6 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <AnimatedNavItemDisabled icon={SettingsIcon} label="Settings" />
-        </SidebarMenu>
-
         <div className="flex items-center gap-2.5 border-t border-sidebar-border px-2 py-2 group-data-[collapsible=icon]:hidden">
           <UserInitials name={user.name} />
           <div className="min-w-0 flex-1">

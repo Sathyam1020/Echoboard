@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Echoboard Widget — Host Site Smoke Test</title>
+  <style>
+    body { font-family: system-ui,-apple-system,sans-serif; max-width: 760px; margin: 60px auto; padding: 0 20px; color: #262626; }
+    h1 { font-size: 26px; font-weight: 500; letter-spacing: -.01em; margin: 0 0 8px; }
+    h2 { font-size: 16px; font-weight: 500; margin: 24px 0 8px; }
+    p { color: #525252; line-height: 1.65; }
+    code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+    button { padding: 8px 14px; border-radius: 8px; border: 1px solid #d4d4d4; background: #fff; font: inherit; font-weight: 500; font-size: 13px; cursor: pointer; }
+    button:hover { border-color: #404040; }
+    pre { background: #fafafa; border: 1px solid #e5e5e5; padding: 12px 14px; border-radius: 8px; font-size: 12px; line-height: 1.5; overflow-x: auto; }
+    .hint { font-size: 12px; color: #737373; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Pretend Acme Corp</h1>
+  <p>This page simulates a 3rd-party SaaS embedding the echoboard widget. Look bottom-right for the floating <strong>Feedback</strong> button.</p>
+
+  <h2>1 · Guest mode (default)</h2>
+  <p>If your visitors aren't signed into your product, the widget collects their email + name on first submit. No code needed — just the <code>&lt;script&gt;</code> tag at the bottom of this page.</p>
+
+  <h2>2 · Auto-identify a signed-in user</h2>
+  <p>If the visitor is already signed into your product, your frontend calls <code>echoboard.identify({...})</code> with their identity — they skip the email gate entirely.</p>
+
+  <div class="row">
+    <button onclick="
+      echoboard.identify({
+        externalId: 'user_alice_001',
+        email: 'alice@acme.com',
+        name: 'Alice — Acme Pro plan'
+      }).then(() => alert('Identified as Alice. Open the widget — no email prompt.'))
+       .catch(e => alert('identify failed: ' + e.message))
+    ">Identify as Alice (unsigned)</button>
+
+    <button onclick="
+      echoboard.identify({
+        externalId: 'user_bob_002',
+        email: 'bob@acme.com',
+        name: 'Bob'
+      }).then(() => alert('Switched to Bob.'))
+       .catch(e => alert('identify failed: ' + e.message))
+    ">Switch to Bob</button>
+
+    <button onclick="
+      echoboard.identify(null).then(() => alert('Signed out.'))
+    ">Sign out</button>
+  </div>
+  <p class="hint">Open the widget after each click. The "Submitting as …" line in the Submit tab reflects whoever's currently identified.</p>
+
+  <h2>3 · Auto-identify with HMAC (production-grade)</h2>
+  <p>For production, your <em>backend</em> mints an HMAC-signed token (using the <code>identifySecretKey</code> from your echoboard dashboard) and your frontend passes it to <code>echoboard.identify({ token })</code>. This makes browser-side impersonation impossible.</p>
+  <p>Code samples for Node / Python / Ruby / PHP are in <code>/dashboard/settings/widget</code>. Toggle "Require signed identity tokens" on the same page to reject unsigned identify calls workspace-wide.</p>
+
+  <h2>The install snippet</h2>
+  <p>Exactly what we ship customers in the dashboard:</p>
+  <pre>&lt;script src="/widget.js" data-board-id="..." async&gt;&lt;/script&gt;</pre>
+
+  <!-- The actual widget loader. data-board-id matches the dev workspace's "Feature Requests" board. -->
+  <script src="/widget.js" data-board-id="26b6823b-157d-4eb7-b2c3-0a37c889a9c7" async></script>
+</body>
+</html>

@@ -27,9 +27,15 @@ export const workspace = pgTable(
     // Public-board auth mode: how visitors authenticate. Default 'guest' so
     // existing workspaces keep working unchanged.
     publicBoardAuth: text("public_board_auth").default("guest").notNull(),
-    // HMAC secret for the (deferred) Secure Identify flow. Auto-generated
-    // for new workspaces in app code; existing rows backfilled in the migration.
+    // HMAC secret for the Secure Identify flow. Auto-generated for new
+    // workspaces in app code; existing rows backfilled in the migration.
     identifySecretKey: text("identify_secret_key"),
+    // When true, /api/visitors/identify rejects unsigned identity payloads —
+    // host SaaS must mint a signed token via their backend. Default false so
+    // existing workspaces keep working.
+    requireSignedIdentify: boolean("require_signed_identify")
+      .default(false)
+      .notNull(),
     ssoRedirectUrl: text("sso_redirect_url"),
     ssoSharedSecret: text("sso_shared_secret"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -51,6 +57,17 @@ export const board = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     visibility: text("visibility").default("public").notNull(),
+    // Widget visual config — applied by the widget loader script + iframe UI.
+    widgetColor: text("widget_color"),
+    widgetPosition: text("widget_position")
+      .default("bottom-right")
+      .notNull(),
+    widgetButtonText: text("widget_button_text")
+      .default("Feedback")
+      .notNull(),
+    widgetShowBranding: boolean("widget_show_branding")
+      .default(true)
+      .notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

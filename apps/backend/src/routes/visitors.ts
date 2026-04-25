@@ -4,6 +4,7 @@ import { Router, type Request, type Response } from "express"
 import rateLimit from "express-rate-limit"
 import { z } from "zod"
 
+import { verifySignedIdentify } from "../lib/hmac-identify.js"
 import {
   createVisitorSession,
   deleteVisitorSession,
@@ -91,17 +92,23 @@ visitorsRouter.post(
   },
 )
 
+// Identify accepts either:
+//   (a) a signed `token` (HMAC-SHA256) — authMethod = 'secure_identify'
+//   (b) raw fields {externalId, email, name, ...} — authMethod = 'identify'
+//
+// When the workspace has `requireSignedIdentify=true`, mode (b) is rejected.
 const identifyBody = z
   .object({
     workspaceId: z.string().min(1),
+    token: z.string().min(1).optional(),
     externalId: z.string().min(1).optional(),
     email: z.string().email().optional(),
     name: z.string().trim().min(1).max(80).optional(),
     avatarUrl: z.string().url().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
-  .refine((d) => d.externalId || d.email, {
-    message: "Provide externalId or email",
+  .refine((d) => d.token || d.externalId || d.email, {
+    message: "Provide a signed token, externalId, or email",
   })
 
 visitorsRouter.post(
@@ -115,7 +122,46 @@ visitorsRouter.post(
         { status: 400, code: "VALIDATION_ERROR" },
       )
     }
-    await loadWorkspace(parsed.data.workspaceId)
+    const ws = await loadWorkspace(parsed.data.workspaceId)
+
+    if (parsed.data.token) {
+      if (!ws.identifySecretKey) {
+        throw new AppError("Workspace has no identify secret configured", {
+          status: 500,
+          code: "IDENTIFY_NOT_CONFIGURED",
+        })
+      }
+      const payload = verifySignedIdentify(
+        parsed.data.token,
+        ws.identifySecretKey,
+      )
+      const v = await findOrCreateVisitor({
+        workspaceId: ws.id,
+        externalId: payload.externalId,
+        email: payload.email ?? null,
+        name: payload.name ?? null,
+        avatarUrl: payload.avatarUrl ?? null,
+        metadata: payload.metadata ?? null,
+        authMethod: "secure_identify",
+        hmacVerified: true,
+      })
+      const session = await createVisitorSession(v.id, 30)
+      applyVisitorCookie(res, session.token, session.expiresAt)
+      res.json({
+        visitorToken: session.token,
+        visitor: serializeVisitor(v),
+      })
+      return
+    }
+
+    // Unsigned path. Reject when the workspace requires signed identity.
+    if (ws.requireSignedIdentify) {
+      throw new AppError(
+        "This workspace requires signed identify tokens",
+        { status: 401, code: "SIGNED_IDENTIFY_REQUIRED" },
+      )
+    }
+
     const v = await findOrCreateVisitor({
       workspaceId: parsed.data.workspaceId,
       externalId: parsed.data.externalId ?? null,
