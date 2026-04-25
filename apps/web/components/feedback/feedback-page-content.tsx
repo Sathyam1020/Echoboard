@@ -3,13 +3,18 @@
 import { ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { useMemo } from "react"
 
 import { AdminPageShell } from "@/components/app-shell/admin-page-shell"
 import { AppTopbar } from "@/components/app-shell/app-topbar"
 import { FeedbackBoardSwitcher } from "@/components/feedback/feedback-board-switcher"
 import { FeedbackList } from "@/components/feedback/feedback-list"
 import { NewPostDialog } from "@/components/feedback/new-post-dialog"
-import { useAdminPostsByBoardQuery, useDashboardBoardsQuery } from "@/hooks/use-dashboard"
+import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
+import {
+  useAdminPostsByBoardInfiniteQuery,
+  useDashboardBoardsQuery,
+} from "@/hooks/use-dashboard"
 
 export function FeedbackPageContent() {
   const boardsQuery = useDashboardBoardsQuery()
@@ -20,13 +25,19 @@ export function FeedbackPageContent() {
   const activeBoard =
     boards.find((b) => b.boardId === boardIdParam) ?? boards[0]
 
-  // Posts depend on the active board — the hook gates internally on
-  // `enabled: !!boardId` so it won't fire until we know it.
-  const postsQuery = useAdminPostsByBoardQuery(activeBoard?.boardId ?? "")
+  const postsQuery = useAdminPostsByBoardInfiniteQuery({
+    boardId: activeBoard?.boardId ?? "",
+    sort: "newest",
+    search: "",
+  })
+
+  const posts = useMemo(
+    () => postsQuery.data?.pages.flatMap((p) => p.posts) ?? [],
+    [postsQuery.data],
+  )
 
   if (!boardsQuery.data || !activeBoard || !postsQuery.data) return null
 
-  const { posts } = postsQuery.data
   const totalVotes = posts.reduce((sum, p) => sum + p.voteCount, 0)
   const publicHref = `/${encodeURIComponent(activeBoard.workspaceSlug)}/${encodeURIComponent(activeBoard.boardSlug)}`
 
@@ -74,8 +85,13 @@ export function FeedbackPageContent() {
         actions={<NewPostDialog boardId={activeBoard.boardId} />}
       />
 
-      <div className="px-4 py-6 sm:px-8">
+      <div className="flex flex-col gap-4 px-4 py-6 sm:px-8">
         <FeedbackList posts={posts} />
+        <InfiniteScrollSentinel
+          hasNextPage={postsQuery.hasNextPage ?? false}
+          isFetchingNextPage={postsQuery.isFetchingNextPage}
+          onLoadMore={() => postsQuery.fetchNextPage()}
+        />
       </div>
     </AdminPageShell>
   )

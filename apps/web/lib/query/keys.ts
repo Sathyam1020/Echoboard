@@ -11,9 +11,31 @@ export const queryKeys = {
     all: () => ["boards"] as const,
     bySlug: (workspaceSlug: string, boardSlug: string) =>
       ["boards", "by-slug", workspaceSlug, boardSlug] as const,
-    posts: (boardId: string) => ["boards", boardId, "posts"] as const,
+    /** Paginated per-board public feed. Sort + search included so the
+     *  cache key changes when the user toggles them. */
+    bySlugPosts: (
+      workspaceSlug: string,
+      boardSlug: string,
+      sort: "newest" | "votes",
+      search: string,
+    ) =>
+      ["boards", "by-slug", workspaceSlug, boardSlug, "posts", sort, search] as const,
+    /** Admin per-boardId paginated feed. */
+    posts: (boardId: string, sort: "newest" | "votes", search: string) =>
+      ["boards", boardId, "posts", sort, search] as const,
+    /** All-feedback workspace-root metadata. */
     allFeedback: (workspaceSlug: string) =>
       ["boards", "all-feedback", workspaceSlug] as const,
+    /** Paginated all-feedback posts. */
+    allFeedbackPosts: (
+      workspaceSlug: string,
+      sort: "newest" | "votes",
+      search: string,
+    ) =>
+      ["boards", "all-feedback", workspaceSlug, "posts", sort, search] as const,
+    /** Public roadmap — non-paginated, status-bounded. */
+    roadmap: (workspaceSlug: string, boardSlug: string) =>
+      ["boards", "roadmap", workspaceSlug, boardSlug] as const,
   },
 
   posts: {
@@ -43,8 +65,12 @@ export const queryKeys = {
   changelog: {
     list: () => ["changelog", "list"] as const,
     detail: (entryId: string) => ["changelog", "detail", entryId] as const,
+    /** Public changelog metadata (workspace + firstBoard). */
     publicByWorkspace: (workspaceSlug: string) =>
       ["changelog", "public", workspaceSlug] as const,
+    /** Paginated public changelog entries. */
+    publicEntries: (workspaceSlug: string) =>
+      ["changelog", "public", workspaceSlug, "entries"] as const,
   },
 
   widget: {

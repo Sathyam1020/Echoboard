@@ -3,13 +3,14 @@
 import { ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { useEffect, useMemo } from "react"
 
 import { AdminPageShell } from "@/components/app-shell/admin-page-shell"
 import { AppTopbar } from "@/components/app-shell/app-topbar"
 import { FeedbackBoardSwitcher } from "@/components/feedback/feedback-board-switcher"
 import { AdminRoadmap } from "@/components/roadmap/admin-roadmap"
 import {
-  useAdminPostsByBoardQuery,
+  useAdminPostsByBoardInfiniteQuery,
   useDashboardBoardsQuery,
 } from "@/hooks/use-dashboard"
 
@@ -21,11 +22,32 @@ export function AdminRoadmapContent() {
   const boards = boardsQuery.data?.boards ?? []
   const activeBoard =
     boards.find((b) => b.boardId === boardIdParam) ?? boards[0]
-  const postsQuery = useAdminPostsByBoardQuery(activeBoard?.boardId ?? "")
+  const postsQuery = useAdminPostsByBoardInfiniteQuery({
+    boardId: activeBoard?.boardId ?? "",
+    sort: "newest",
+    search: "",
+  })
+
+  // Roadmap groups by status, so we need every post — auto-fetch the
+  // next page as long as one exists. Bounded by the user's actual post
+  // count, capped at a generous safety stop in case something
+  // misbehaves.
+  useEffect(() => {
+    if (
+      postsQuery.hasNextPage &&
+      !postsQuery.isFetchingNextPage &&
+      (postsQuery.data?.pages.length ?? 0) < 50
+    ) {
+      void postsQuery.fetchNextPage()
+    }
+  }, [postsQuery])
+
+  const posts = useMemo(
+    () => postsQuery.data?.pages.flatMap((p) => p.posts) ?? [],
+    [postsQuery.data],
+  )
 
   if (!boardsQuery.data || !activeBoard || !postsQuery.data) return null
-
-  const { posts } = postsQuery.data
   const publicHref = `/${encodeURIComponent(activeBoard.workspaceSlug)}/${encodeURIComponent(activeBoard.boardSlug)}/roadmap`
 
   return (

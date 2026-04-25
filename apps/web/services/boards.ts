@@ -1,13 +1,14 @@
-// Board service — browser-side. Used by useQuery hooks. The server-side
-// equivalent lives in `boards.server.ts` and gets called from server
-// components doing prefetch.
+// Board service — browser-side. Used by useQuery / useInfiniteQuery hooks.
+// The server-side equivalent lives in `boards.server.ts` and gets called
+// from server components doing prefetch.
 import { httpClient } from "@/lib/http/axios-client"
 import type { PostRow } from "@/components/boards/types"
+
+// ── Metadata-only responses (formerly returned posts inline) ─────────
 
 export type BoardBySlugResponse = {
   workspace: { id: string; name: string; slug: string; ownerId: string }
   board: { id: string; name: string; slug: string; visibility: string }
-  posts: PostRow[]
   workspaceBoards: { id: string; name: string; slug: string }[]
 }
 
@@ -21,23 +22,8 @@ export async function fetchBoardBySlug(args: {
   return data
 }
 
-export async function fetchPostsByBoard(boardId: string): Promise<{ posts: PostRow[] }> {
-  const { data } = await httpClient.get<{ posts: PostRow[] }>(
-    `/api/boards/${encodeURIComponent(boardId)}/posts`,
-  )
-  return data
-}
-
-/** Posts in the all-feedback view carry their source board so the row
- *  can render a board badge. The per-board endpoints return `PostRow`
- *  without a board (the board is implicit from the URL). */
-export type PostRowWithBoard = PostRow & {
-  board: { id: string; name: string; slug: string } | null
-}
-
 export type AllFeedbackResponse = {
   workspace: { id: string; name: string; slug: string; ownerId: string }
-  posts: PostRowWithBoard[]
   workspaceBoards: { id: string; name: string; slug: string }[]
 }
 
@@ -46,6 +32,105 @@ export async function fetchAllFeedback(
 ): Promise<AllFeedbackResponse> {
   const { data } = await httpClient.get<AllFeedbackResponse>(
     `/api/boards/by-workspace/${encodeURIComponent(workspaceSlug)}`,
+  )
+  return data
+}
+
+// ── Paginated post lists ──────────────────────────────────────────────
+
+export type SortOption = "newest" | "votes"
+
+/** All-feedback posts carry their source board so the row can render a
+ *  "from <board>" badge. Per-board posts inherit their board from URL. */
+export type PostRowWithBoard = PostRow & {
+  board: { id: string; name: string; slug: string } | null
+}
+
+export type PostsPage<T extends PostRow = PostRow> = {
+  posts: T[]
+  /** null → no more pages. */
+  nextCursor: string | null
+}
+
+type FetchBoardPostsArgs = {
+  workspaceSlug: string
+  boardSlug: string
+  cursor?: string | null
+  sort?: SortOption
+  search?: string
+}
+
+export async function fetchBoardPosts(
+  args: FetchBoardPostsArgs,
+): Promise<PostsPage<PostRow>> {
+  const params = new URLSearchParams()
+  if (args.cursor) params.set("cursor", args.cursor)
+  if (args.sort && args.sort !== "newest") params.set("sort", args.sort)
+  if (args.search) params.set("search", args.search)
+  const qs = params.toString()
+  const { data } = await httpClient.get<PostsPage<PostRow>>(
+    `/api/boards/by-slug/${encodeURIComponent(args.workspaceSlug)}/${encodeURIComponent(args.boardSlug)}/posts${qs ? `?${qs}` : ""}`,
+  )
+  return data
+}
+
+type FetchAllFeedbackPostsArgs = {
+  workspaceSlug: string
+  cursor?: string | null
+  sort?: SortOption
+  search?: string
+}
+
+export async function fetchAllFeedbackPosts(
+  args: FetchAllFeedbackPostsArgs,
+): Promise<PostsPage<PostRowWithBoard>> {
+  const params = new URLSearchParams()
+  if (args.cursor) params.set("cursor", args.cursor)
+  if (args.sort && args.sort !== "newest") params.set("sort", args.sort)
+  if (args.search) params.set("search", args.search)
+  const qs = params.toString()
+  const { data } = await httpClient.get<PostsPage<PostRowWithBoard>>(
+    `/api/boards/by-workspace/${encodeURIComponent(args.workspaceSlug)}/posts${qs ? `?${qs}` : ""}`,
+  )
+  return data
+}
+
+// ── Roadmap (non-paginated, status-bounded) ──────────────────────────
+
+export type RoadmapResponse = {
+  workspace: { id: string; name: string; slug: string; ownerId: string }
+  board: { id: string; name: string; slug: string; visibility: string }
+  /** All planned + in-progress posts plus the 50 most recent shipped. */
+  posts: PostRow[]
+}
+
+export async function fetchBoardRoadmap(args: {
+  workspaceSlug: string
+  boardSlug: string
+}): Promise<RoadmapResponse> {
+  const { data } = await httpClient.get<RoadmapResponse>(
+    `/api/boards/by-slug/${encodeURIComponent(args.workspaceSlug)}/${encodeURIComponent(args.boardSlug)}/roadmap`,
+  )
+  return data
+}
+
+type FetchBoardPostsByIdArgs = {
+  boardId: string
+  cursor?: string | null
+  sort?: SortOption
+  search?: string
+}
+
+export async function fetchPostsByBoard(
+  args: FetchBoardPostsByIdArgs,
+): Promise<PostsPage<PostRow>> {
+  const params = new URLSearchParams()
+  if (args.cursor) params.set("cursor", args.cursor)
+  if (args.sort && args.sort !== "newest") params.set("sort", args.sort)
+  if (args.search) params.set("search", args.search)
+  const qs = params.toString()
+  const { data } = await httpClient.get<PostsPage<PostRow>>(
+    `/api/boards/${encodeURIComponent(args.boardId)}/posts${qs ? `?${qs}` : ""}`,
   )
   return data
 }

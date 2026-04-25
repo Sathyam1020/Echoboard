@@ -23,13 +23,32 @@ function invalidatePostSurfaces(qc: ReturnType<typeof useQueryClient>, postId?: 
   if (postId) qc.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) })
 }
 
-export function useCreatePostMutation(boardId: string) {
+// boardId is part of the mutation variables (not the hook arg) so the
+// same hook handles fixed-board callers (admin "New post" dialog,
+// per-board public submit) and the "pick a board" path used by the
+// all-feedback view.
+export function useCreatePostMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { title: string; description: string }) =>
-      createAdminPost(boardId, body),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.boards.posts(boardId) })
+    mutationFn: (vars: {
+      boardId: string
+      title: string
+      description: string
+    }) =>
+      createAdminPost(vars.boardId, {
+        title: vars.title,
+        description: vars.description,
+      }),
+    onSuccess: (_data, vars) => {
+      // Invalidate every paginated variant of this board's feed (sort
+      // + search axes) by matching on the prefix.
+      qc.invalidateQueries({ queryKey: ["boards", vars.boardId, "posts"] })
+      // Plus any all-feedback caches that aggregate this workspace —
+      // the broader prefix catches them.
+      qc.invalidateQueries({ queryKey: ["boards", "all-feedback"] })
+      qc.invalidateQueries({
+        queryKey: ["boards", "by-slug"],
+      })
       invalidatePostSurfaces(qc)
     },
   })

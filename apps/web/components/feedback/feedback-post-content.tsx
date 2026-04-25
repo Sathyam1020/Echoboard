@@ -2,6 +2,7 @@
 
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useMemo } from "react"
 
 import { AdminPageShell } from "@/components/app-shell/admin-page-shell"
 import { PostActionsRow } from "@/components/feedback/post-actions-row"
@@ -10,14 +11,23 @@ import { VoterListCard } from "@/components/feedback/voter-list-card"
 import { CommentList } from "@/components/post/comment-list"
 import { PostHeader } from "@/components/post/post-header"
 import { StatusPicker } from "@/components/post/status-picker"
+import { usePostCommentsInfiniteQuery } from "@/hooks/queries/use-post-comments"
 import { usePostDetailQuery } from "@/hooks/queries/use-post-detail"
 
 export function FeedbackPostContent({ postId }: { postId: string }) {
   const { data } = usePostDetailQuery(postId)
+  // Comments live in their own paginated cache. The stats card needs
+  // an active-comment count; sourcing it here keeps the count live as
+  // pages load + mutations land.
+  const commentsQuery = usePostCommentsInfiniteQuery(postId)
+  const activeComments = useMemo(() => {
+    const all = commentsQuery.data?.pages.flatMap((p) => p.comments) ?? []
+    return all.filter((c) => !c.deletedAt).length
+  }, [commentsQuery.data])
+
   if (!data) return null
 
   const voters = data.post.voters ?? []
-  const activeComments = data.comments.filter((c) => !c.deletedAt).length
 
   return (
     <AdminPageShell activeItem="feedback">
@@ -59,7 +69,6 @@ export function FeedbackPostContent({ postId }: { postId: string }) {
           <CommentList
             postId={data.post.id}
             workspaceOwnerId={data.post.workspace.ownerId}
-            initialComments={data.comments}
           />
         </div>
 

@@ -74,7 +74,6 @@ export function PostDetailContent({
                 postId={data.post.id}
                 workspaceId={data.post.workspace.id}
                 workspaceOwnerId={data.post.workspace.ownerId}
-                initialComments={data.comments}
               />
             </div>
           </main>

@@ -6,6 +6,7 @@ import {
   ilike,
   inArray,
   isNotNull,
+  lt,
   or,
   sql,
 } from "@workspace/db/client"
@@ -20,6 +21,13 @@ import {
 import { Router, type Request, type Response } from "express"
 import { z } from "zod"
 
+import {
+  decodeCursor,
+  encodeCursor,
+  isChangelogCursor,
+  PAGE_SIZE,
+  type ChangelogCursor,
+} from "../lib/cursor.js"
 import { AppError } from "../middleware/error-handler.js"
 import { requireAuth } from "../middleware/require-auth.js"
 
@@ -78,23 +86,51 @@ function serializeEntry(e: typeof changelogEntry.$inferSelect) {
   }
 }
 
-// GET /api/changelog — admin list for the signed-in user's workspace.
-changelogRouter.get("/", requireAuth, async (_req: Request, res: Response) => {
+// GET /api/changelog?cursor= — admin list for the signed-in user's
+// workspace. Cursor pagination over `effective_date desc, id desc`
+// where effective_date = COALESCE(publishedAt, createdAt).
+changelogRouter.get("/", requireAuth, async (req: Request, res: Response) => {
   const session = res.locals.session!
   const ws = await loadFirstOwnedWorkspace(session.user.id)
 
-  const entries = await db
+  const cursor = decodeCursor(
+    typeof req.query.cursor === "string" ? req.query.cursor : null,
+    isChangelogCursor,
+  )
+  const limit = PAGE_SIZE.changelog
+
+  // Effective date — admins see drafts (publishedAt null) ordered by
+  // createdAt; published entries by publishedAt. Single COALESCE column
+  // gives us a stable tie-break across both buckets.
+  const effectiveDate = sql<Date>`COALESCE(${changelogEntry.publishedAt}, ${changelogEntry.createdAt})`
+
+  // Drizzle's `and()` filters out raw SQL fragments unless they're
+  // wrapped in typed helpers. Use lt/eq/or so the cursor predicate
+  // actually reaches the SQL — not just typechecks.
+  const cursorWhere = cursor
+    ? or(
+        lt(effectiveDate, new Date(cursor.pa)),
+        and(
+          eq(effectiveDate, new Date(cursor.pa)),
+          lt(changelogEntry.id, cursor.id),
+        ),
+      )
+    : undefined
+
+  const rows = await db
     .select()
     .from(changelogEntry)
-    .where(eq(changelogEntry.workspaceId, ws.id))
-    .orderBy(
-      sql`COALESCE(${changelogEntry.publishedAt}, ${changelogEntry.createdAt}) DESC`,
-    )
+    .where(and(eq(changelogEntry.workspaceId, ws.id), cursorWhere))
+    .orderBy(desc(effectiveDate), desc(changelogEntry.id))
+    .limit(limit + 1)
+
+  const hasNext = rows.length > limit
+  const entries = hasNext ? rows.slice(0, limit) : rows
 
   const ids = entries.map((e) => e.id)
   const linkedCounts = new Map<string, number>()
   if (ids.length > 0) {
-    const rows = await db
+    const linkRows = await db
       .select({
         entryId: changelogPost.changelogEntryId,
         count: sql<number>`count(*)::int`,
@@ -102,7 +138,18 @@ changelogRouter.get("/", requireAuth, async (_req: Request, res: Response) => {
       .from(changelogPost)
       .where(inArray(changelogPost.changelogEntryId, ids))
       .groupBy(changelogPost.changelogEntryId)
-    for (const r of rows) linkedCounts.set(r.entryId, r.count)
+    for (const r of linkRows) linkedCounts.set(r.entryId, r.count)
+  }
+
+  let nextCursor: string | null = null
+  if (hasNext && entries.length > 0) {
+    const last = entries[entries.length - 1]!
+    const lastDate = last.publishedAt ?? last.createdAt
+    nextCursor = encodeCursor({
+      k: "changelog",
+      pa: lastDate.toISOString(),
+      id: last.id,
+    })
   }
 
   res.json({
@@ -110,10 +157,12 @@ changelogRouter.get("/", requireAuth, async (_req: Request, res: Response) => {
       ...serializeEntry(e),
       linkedPostCount: linkedCounts.get(e.id) ?? 0,
     })),
+    nextCursor,
   })
 })
 
-// GET /api/changelog/public/:workspaceSlug — published entries for public view.
+// GET /api/changelog/public/:workspaceSlug — workspace metadata only.
+// Entries moved to `/public/:ws/entries`.
 changelogRouter.get(
   "/public/:workspaceSlug",
   async (req: Request, res: Response) => {
@@ -143,9 +192,54 @@ changelogRouter.get(
       .orderBy(board.createdAt)
       .limit(1)
 
-    // Pull author identity alongside the entries so the public detail
-    // page can show "Written by …" without a second round-trip per
-    // entry. Workspace-owner check is on the consuming side.
+    res.json({
+      workspace: { id: ws.id, name: ws.name, slug: ws.slug },
+      firstBoard: firstBoard ?? null,
+    })
+  },
+)
+
+// GET /api/changelog/public/:workspaceSlug/entries?cursor= — paginated
+// published entries. Author info is joined so the detail page can show
+// "Written by …" without a second round-trip.
+changelogRouter.get(
+  "/public/:workspaceSlug/entries",
+  async (req: Request, res: Response) => {
+    const wsSlug = req.params.workspaceSlug
+    if (typeof wsSlug !== "string" || !wsSlug) {
+      throw new AppError("Invalid workspace slug", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const [ws] = await db
+      .select()
+      .from(workspace)
+      .where(eq(workspace.slug, wsSlug))
+    if (!ws) {
+      throw new AppError("Workspace not found", {
+        status: 404,
+        code: "WORKSPACE_NOT_FOUND",
+      })
+    }
+
+    const cursor = decodeCursor(
+      typeof req.query.cursor === "string" ? req.query.cursor : null,
+      isChangelogCursor,
+    )
+    const limit = PAGE_SIZE.changelog
+
+    const cursorWhere = cursor
+      ? or(
+          lt(changelogEntry.publishedAt, new Date(cursor.pa)),
+          and(
+            eq(changelogEntry.publishedAt, new Date(cursor.pa)),
+            lt(changelogEntry.id, cursor.id),
+          ),
+        )
+      : undefined
+
     const entryRows = await db
       .select({
         entry: changelogEntry,
@@ -158,11 +252,16 @@ changelogRouter.get(
         and(
           eq(changelogEntry.workspaceId, ws.id),
           isNotNull(changelogEntry.publishedAt),
+          cursorWhere,
         ),
       )
-      .orderBy(desc(changelogEntry.publishedAt))
+      .orderBy(desc(changelogEntry.publishedAt), desc(changelogEntry.id))
+      .limit(limit + 1)
 
-    const ids = entryRows.map((r) => r.entry.id)
+    const hasNext = entryRows.length > limit
+    const pageRows = hasNext ? entryRows.slice(0, limit) : entryRows
+
+    const ids = pageRows.map((r) => r.entry.id)
     const linkedMap = new Map<
       string,
       Array<{ id: string; title: string; boardSlug: string }>
@@ -186,16 +285,26 @@ changelogRouter.get(
       }
     }
 
+    let nextCursor: string | null = null
+    if (hasNext && pageRows.length > 0) {
+      const last = pageRows[pageRows.length - 1]!
+      // publishedAt is guaranteed non-null by the WHERE clause above.
+      nextCursor = encodeCursor({
+        k: "changelog",
+        pa: last.entry.publishedAt!.toISOString(),
+        id: last.entry.id,
+      })
+    }
+
     res.json({
-      workspace: { id: ws.id, name: ws.name, slug: ws.slug },
-      firstBoard: firstBoard ?? null,
-      entries: entryRows.map((r) => ({
+      entries: pageRows.map((r) => ({
         ...serializeEntry(r.entry),
         author: r.authorName
           ? { name: r.authorName, image: r.authorImage ?? null }
           : null,
         linkedPosts: linkedMap.get(r.entry.id) ?? [],
       })),
+      nextCursor,
     })
   },
 )

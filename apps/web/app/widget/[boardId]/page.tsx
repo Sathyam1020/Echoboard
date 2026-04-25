@@ -31,8 +31,9 @@ export default async function WidgetIframePage({
     throw err
   }
 
-  // Initial post list — same endpoint the public board uses.
-  const { posts } = await fetchPostsByBoardSSR(boardId)
+  // Initial post list — first page only. The widget UI loads more on
+  // scroll if the user wants to dig deeper.
+  const { posts } = await fetchPostsByBoardSSR({ boardId })
 
   return (
     <WidgetUI

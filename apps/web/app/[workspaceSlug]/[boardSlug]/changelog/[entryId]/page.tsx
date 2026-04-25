@@ -8,7 +8,10 @@ import { makeQueryClient } from "@/lib/query/query-client"
 import { queryKeys } from "@/lib/query/keys"
 import { absoluteUrl } from "@/lib/seo"
 import { fetchBoardBySlugSSR } from "@/services/boards.server"
-import { fetchPublicChangelogSSR } from "@/services/changelog.server"
+import {
+  fetchPublicChangelogEntriesSSR,
+  fetchPublicChangelogSSR,
+} from "@/services/changelog.server"
 
 type RouteParams = {
   workspaceSlug: string
@@ -16,14 +19,18 @@ type RouteParams = {
   entryId: string
 }
 
-// Slice the entry out of the prefetched changelog list — same data,
-// no extra round-trip. Returns null if the entry doesn't exist or
-// isn't published.
-function findEntry(
-  entries: Awaited<ReturnType<typeof fetchPublicChangelogSSR>>["entries"],
+// Pull the full entries list (one page is enough for v1; if the entry
+// is older than ~10 entries deep, we'd need to paginate looking for it.
+// For now, the detail page always shows entries from the first page.).
+async function findEntryFirstPage(
+  workspaceSlug: string,
   entryId: string,
 ) {
-  return entries.find((e) => e.id === entryId) ?? null
+  const page = await fetchPublicChangelogEntriesSSR({ workspaceSlug })
+  return {
+    page,
+    entry: page.entries.find((e) => e.id === entryId) ?? null,
+  }
 }
 
 export async function generateMetadata({
@@ -33,10 +40,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { workspaceSlug, boardSlug, entryId } = await params
   try {
-    const changelog = await fetchPublicChangelogSSR(workspaceSlug)
-    const entry = findEntry(changelog.entries, entryId)
-    if (!entry) return { title: "Changelog entry not found" }
-    const title = `${entry.title} — ${changelog.workspace.name}`
+    const [meta, found] = await Promise.all([
+      fetchPublicChangelogSSR(workspaceSlug),
+      findEntryFirstPage(workspaceSlug, entryId),
+    ])
+    if (!found.entry) return { title: "Changelog entry not found" }
+    const entry = found.entry
+    const title = `${entry.title} — ${meta.workspace.name}`
     const description = entry.body
       .replace(/[#`*_>~\[\]]+/g, "")
       .replace(/\s+/g, " ")
@@ -57,7 +67,7 @@ export async function generateMetadata({
         publishedTime: entry.publishedAt ?? undefined,
         images: [
           absoluteUrl(
-            `/og?title=${encodeURIComponent(entry.title)}&description=${encodeURIComponent(`Changelog · ${changelog.workspace.name}`)}&type=board`,
+            `/og?title=${encodeURIComponent(entry.title)}&description=${encodeURIComponent(`Changelog · ${meta.workspace.name}`)}&type=board`,
           ),
         ],
       },
@@ -78,22 +88,24 @@ export default async function PublicChangelogEntryPage({
 
   const queryClient = makeQueryClient()
 
-  // Both prefetches run in parallel — same shape as the list page.
-  // The entry detail is sliced from the changelog list response.
   try {
-    const [board, changelog] = await Promise.all([
+    const [board, changelogMeta, found] = await Promise.all([
       fetchBoardBySlugSSR({ workspaceSlug, boardSlug }),
       fetchPublicChangelogSSR(workspaceSlug),
+      findEntryFirstPage(workspaceSlug, entryId),
     ])
-    const entry = findEntry(changelog.entries, entryId)
-    if (!entry) notFound()
+    if (!found.entry) notFound()
     queryClient.setQueryData(
       queryKeys.boards.bySlug(workspaceSlug, boardSlug),
       board,
     )
     queryClient.setQueryData(
       queryKeys.changelog.publicByWorkspace(workspaceSlug),
-      changelog,
+      changelogMeta,
+    )
+    queryClient.setQueryData(
+      queryKeys.changelog.publicEntries(workspaceSlug),
+      { pages: [found.page], pageParams: [null] },
     )
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound()

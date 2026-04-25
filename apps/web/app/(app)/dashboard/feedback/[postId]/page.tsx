@@ -7,7 +7,10 @@ import { ApiError } from "@/lib/http/api-error"
 import { queryKeys } from "@/lib/query/keys"
 import { makeQueryClient } from "@/lib/query/query-client"
 import { fetchDashboardBoardsSSR } from "@/services/dashboard.server"
-import { fetchPostDetailSSR } from "@/services/posts.server"
+import {
+  fetchPostCommentsSSR,
+  fetchPostDetailSSR,
+} from "@/services/posts.server"
 
 export default async function FeedbackPostPage({
   params,
@@ -38,8 +41,17 @@ export default async function FeedbackPostPage({
 
   queryClient.setQueryData(queryKeys.posts.detail(postId), detail)
 
-  const boards = await fetchDashboardBoardsSSR()
+  // Seed comments + boards in parallel — both are independent of the
+  // post detail above.
+  const [boards, commentsPage] = await Promise.all([
+    fetchDashboardBoardsSSR(),
+    fetchPostCommentsSSR({ postId }),
+  ])
   queryClient.setQueryData(queryKeys.dashboard.boards(), boards)
+  queryClient.setQueryData(queryKeys.comments.byPost(postId), {
+    pages: [commentsPage],
+    pageParams: [null],
+  })
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

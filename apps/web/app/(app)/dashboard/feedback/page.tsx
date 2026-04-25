@@ -29,10 +29,13 @@ export default async function FeedbackPage({
 
   const activeBoard =
     boards.boards.find((b) => b.boardId === boardIdParam) ?? boards.boards[0]!
-  const posts = await fetchAdminPostsByBoardSSR(activeBoard.boardId)
+  const postsPage = await fetchAdminPostsByBoardSSR({
+    boardId: activeBoard.boardId,
+    sort: "newest",
+  })
   queryClient.setQueryData(
-    queryKeys.boards.posts(activeBoard.boardId),
-    posts,
+    queryKeys.boards.posts(activeBoard.boardId, "newest", ""),
+    { pages: [postsPage], pageParams: [null] },
   )
 
   return (

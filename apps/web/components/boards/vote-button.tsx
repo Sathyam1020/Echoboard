@@ -70,7 +70,7 @@ export function VoteButton({
     workspaceOwnerId: workspaceOwnerId ?? "",
   })
 
-  const voteMutation = useVoteMutation({ workspaceSlug, boardSlug, postId })
+  const voteMutation = useVoteMutation({ postId })
 
   async function performVote() {
     const prevCount = count

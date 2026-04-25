@@ -8,7 +8,10 @@ import { makeQueryClient } from "@/lib/query/query-client"
 import { queryKeys } from "@/lib/query/keys"
 import { absoluteUrl } from "@/lib/seo"
 import { fetchBoardBySlugSSR } from "@/services/boards.server"
-import { fetchPublicChangelogSSR } from "@/services/changelog.server"
+import {
+  fetchPublicChangelogEntriesSSR,
+  fetchPublicChangelogSSR,
+} from "@/services/changelog.server"
 
 type RouteParams = { workspaceSlug: string; boardSlug: string }
 
@@ -55,12 +58,13 @@ export default async function PublicChangelogPage({
 
   const queryClient = makeQueryClient()
 
-  // Both fetches happen in parallel on the server — no point sequencing
-  // them. Either failing with 404 should surface as not-found.
+  // Three prefetches in parallel — the metadata for the board chrome,
+  // the changelog meta, and the first page of entries (paginated).
   try {
-    const [board, changelog] = await Promise.all([
+    const [board, changelogMeta, entriesPage] = await Promise.all([
       fetchBoardBySlugSSR({ workspaceSlug, boardSlug }),
       fetchPublicChangelogSSR(workspaceSlug),
+      fetchPublicChangelogEntriesSSR({ workspaceSlug }),
     ])
     queryClient.setQueryData(
       queryKeys.boards.bySlug(workspaceSlug, boardSlug),
@@ -68,7 +72,11 @@ export default async function PublicChangelogPage({
     )
     queryClient.setQueryData(
       queryKeys.changelog.publicByWorkspace(workspaceSlug),
-      changelog,
+      changelogMeta,
+    )
+    queryClient.setQueryData(
+      queryKeys.changelog.publicEntries(workspaceSlug),
+      { pages: [entriesPage], pageParams: [null] },
     )
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound()

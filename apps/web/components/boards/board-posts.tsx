@@ -2,7 +2,10 @@
 
 import { Input } from "@workspace/ui/components/input"
 import { Search } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+
+import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
+import { useBoardPostsInfiniteQuery } from "@/hooks/queries/use-board-posts"
 
 import { PostList } from "./post-list"
 import { SortPills, type SortOption } from "./sort-pills"
@@ -13,46 +16,37 @@ export function BoardPosts({
   boardId,
   workspaceId,
   workspaceOwnerId,
-  posts,
   workspaceSlug,
   boardSlug,
 }: {
   boardId: string
   workspaceId: string
   workspaceOwnerId: string
-  posts: PostRow[]
   workspaceSlug: string
   boardSlug: string
 }) {
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [sort, setSort] = useState<SortOption>("newest")
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    let arr = posts
-    if (q) {
-      arr = arr.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q),
-      )
-    }
-    const sorter = (a: PostRow, b: PostRow) => {
-      if (sort === "votes") {
-        const diff = b.voteCount - a.voteCount
-        if (diff !== 0) return diff
-        return b.createdAt.localeCompare(a.createdAt)
-      }
-      const cmp = a.createdAt.localeCompare(b.createdAt)
-      return sort === "newest" ? -cmp : cmp
-    }
-    // Pinned posts always land on top regardless of the selected sort.
-    const pinned = arr.filter((p) => p.pinnedAt)
-    const rest = arr.filter((p) => !p.pinnedAt)
-    pinned.sort(sorter)
-    rest.sort(sorter)
-    return [...pinned, ...rest]
-  }, [posts, search, sort])
+  // Debounce the search so each keystroke doesn't fire a network
+  // request — search is in the queryKey, so it'd refetch otherwise.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 250)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const query = useBoardPostsInfiniteQuery({
+    workspaceSlug,
+    boardSlug,
+    sort,
+    search: debouncedSearch,
+  })
+
+  const posts: PostRow[] = useMemo(
+    () => query.data?.pages.flatMap((p) => p.posts) ?? [],
+    [query.data],
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,11 +73,17 @@ export function BoardPosts({
       <SortPills value={sort} onChange={setSort} />
 
       <PostList
-        posts={filtered}
+        posts={posts}
         workspaceSlug={workspaceSlug}
         boardSlug={boardSlug}
         workspaceId={workspaceId}
         workspaceOwnerId={workspaceOwnerId}
+      />
+
+      <InfiniteScrollSentinel
+        hasNextPage={query.hasNextPage ?? false}
+        isFetchingNextPage={query.isFetchingNextPage}
+        onLoadMore={() => query.fetchNextPage()}
       />
     </div>
   )

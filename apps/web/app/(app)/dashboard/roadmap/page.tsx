@@ -28,10 +28,15 @@ export default async function RoadmapPage({
 
   const activeBoard =
     boards.boards.find((b) => b.boardId === boardIdParam) ?? boards.boards[0]!
-  const posts = await fetchAdminPostsByBoardSSR(activeBoard.boardId)
+  // Roadmap auto-fetches subsequent pages on the client until exhausted
+  // (see AdminRoadmapContent). Seed page 1 here so first paint renders.
+  const postsPage = await fetchAdminPostsByBoardSSR({
+    boardId: activeBoard.boardId,
+    sort: "newest",
+  })
   queryClient.setQueryData(
-    queryKeys.boards.posts(activeBoard.boardId),
-    posts,
+    queryKeys.boards.posts(activeBoard.boardId, "newest", ""),
+    { pages: [postsPage], pageParams: [null] },
   )
 
   return (

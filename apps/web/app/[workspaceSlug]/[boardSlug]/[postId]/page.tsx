@@ -7,7 +7,10 @@ import { ApiError } from "@/lib/http/api-error"
 import { makeQueryClient } from "@/lib/query/query-client"
 import { queryKeys } from "@/lib/query/keys"
 import { absoluteUrl } from "@/lib/seo"
-import { fetchPostDetailSSR } from "@/services/posts.server"
+import {
+  fetchPostCommentsSSR,
+  fetchPostDetailSSR,
+} from "@/services/posts.server"
 
 type RouteParams = {
   workspaceSlug: string
@@ -23,8 +26,6 @@ export async function generateMetadata({
   const { workspaceSlug, boardSlug, postId } = await params
   try {
     const data = await fetchPostDetailSSR(postId)
-    // Description = first ~155 chars of the post body, fallback to title
-    // if the body is empty. Trims at a word boundary to avoid mid-word cuts.
     const raw = data.post.description?.trim() ?? ""
     const truncated =
       raw.length > 155
@@ -45,7 +46,7 @@ export async function generateMetadata({
         url,
         images: [
           absoluteUrl(
-            `/og?title=${encodeURIComponent(data.post.title)}&description=${encodeURIComponent(`${data.post.voteCount} votes · ${data.comments.length} comments`)}&type=board`,
+            `/og?title=${encodeURIComponent(data.post.title)}&description=${encodeURIComponent(`${data.post.voteCount} votes`)}&type=board`,
           ),
         ],
       },
@@ -67,8 +68,18 @@ export default async function PostPage({
   const queryClient = makeQueryClient()
 
   try {
-    const data = await fetchPostDetailSSR(postId)
-    queryClient.setQueryData(queryKeys.posts.detail(postId), data)
+    // Post detail + first page of comments in parallel — comments now
+    // paginate via `useInfiniteQuery`, so we seed `pages[0]` for the
+    // chronological feed and let scroll fetch subsequent pages.
+    const [detail, commentsPage] = await Promise.all([
+      fetchPostDetailSSR(postId),
+      fetchPostCommentsSSR({ postId }),
+    ])
+    queryClient.setQueryData(queryKeys.posts.detail(postId), detail)
+    queryClient.setQueryData(queryKeys.comments.byPost(postId), {
+      pages: [commentsPage],
+      pageParams: [null],
+    })
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound()
     throw err

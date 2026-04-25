@@ -7,7 +7,10 @@ import { ApiError } from "@/lib/http/api-error"
 import { makeQueryClient } from "@/lib/query/query-client"
 import { queryKeys } from "@/lib/query/keys"
 import { absoluteUrl } from "@/lib/seo"
-import { fetchBoardBySlugSSR } from "@/services/boards.server"
+import {
+  fetchBoardBySlugSSR,
+  fetchBoardPostsSSR,
+} from "@/services/boards.server"
 
 type RouteParams = { workspaceSlug: string; boardSlug: string }
 
@@ -20,7 +23,7 @@ export async function generateMetadata({
   try {
     const data = await fetchBoardBySlugSSR({ workspaceSlug, boardSlug })
     const title = `${data.board.name} — ${data.workspace.name} Feedback`
-    const description = `Vote on feature requests and see what's planned for ${data.workspace.name}. ${data.posts.length} ${data.posts.length === 1 ? "post" : "posts"} · submit your ideas.`
+    const description = `Vote on feature requests and see what's planned for ${data.workspace.name}. Submit your ideas.`
     const url = absoluteUrl(`/${workspaceSlug}/${boardSlug}`)
     return {
       title,
@@ -33,7 +36,7 @@ export async function generateMetadata({
         url,
         images: [
           absoluteUrl(
-            `/og?title=${encodeURIComponent(`${data.board.name} — ${data.workspace.name}`)}&description=${encodeURIComponent(`${data.posts.length} feature requests`)}&type=board`,
+            `/og?title=${encodeURIComponent(`${data.board.name} — ${data.workspace.name}`)}&description=${encodeURIComponent(`Feature requests for ${data.workspace.name}`)}&type=board`,
           ),
         ],
       },
@@ -56,15 +59,27 @@ export default async function BoardPage({
 }) {
   const { workspaceSlug, boardSlug } = await params
 
-  // Per-request query client (singletons leak data between requests on the
-  // server). Prefetch the board + sibling boards + posts in one shot so the
-  // hydrated client component can read everything from cache.
+  // Per-request query client (singletons leak data between requests on
+  // the server). Prefetch the board metadata + first page of posts in
+  // parallel so the hydrated client has everything for first paint.
   const queryClient = makeQueryClient()
-  const cacheKey = queryKeys.boards.bySlug(workspaceSlug, boardSlug)
 
   try {
-    const data = await fetchBoardBySlugSSR({ workspaceSlug, boardSlug })
-    queryClient.setQueryData(cacheKey, data)
+    const [meta, postsPage] = await Promise.all([
+      fetchBoardBySlugSSR({ workspaceSlug, boardSlug }),
+      // Default sort + empty search match `BoardPosts`'s initial state.
+      // The infinite query reads `pages[0]` from this seed; subsequent
+      // pages fetch client-side as the user scrolls.
+      fetchBoardPostsSSR({ workspaceSlug, boardSlug, sort: "newest" }),
+    ])
+    queryClient.setQueryData(
+      queryKeys.boards.bySlug(workspaceSlug, boardSlug),
+      meta,
+    )
+    queryClient.setQueryData(
+      queryKeys.boards.bySlugPosts(workspaceSlug, boardSlug, "newest", ""),
+      { pages: [postsPage], pageParams: [null] },
+    )
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound()
     throw err

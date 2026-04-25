@@ -69,7 +69,6 @@ export function PublicBoardContent({
               boardId={data.board.id}
               workspaceId={data.workspace.id}
               workspaceOwnerId={data.workspace.ownerId}
-              posts={data.posts}
               workspaceSlug={data.workspace.slug}
               boardSlug={data.board.slug}
             />

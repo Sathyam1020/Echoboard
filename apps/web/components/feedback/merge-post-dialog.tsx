@@ -45,7 +45,10 @@ export function MergePostDialog({
   useEffect(() => {
     if (!open || posts !== null) return
     let cancelled = false
-    fetchAdminPostsByBoard(boardId)
+    // First page only — visitor can refine via the search box if the
+    // target post isn't on the first page. Server-side ILIKE on title/
+    // description means the search hits everything, not just loaded.
+    fetchAdminPostsByBoard({ boardId })
       .then((res) => {
         if (cancelled) return
         setPosts(res.posts.filter((p) => p.id !== postId))

@@ -11,7 +11,10 @@ import { MarkdownBody } from "@/components/changelog/markdown-body"
 import { WrittenByCard } from "@/components/changelog/written-by-card"
 import { PageEnter } from "@/components/common/page-enter"
 import { useBoardBySlugQuery } from "@/hooks/queries/use-board-by-slug"
-import { usePublicChangelogQuery } from "@/hooks/queries/use-public-changelog"
+import {
+  usePublicChangelogEntriesInfiniteQuery,
+  usePublicChangelogQuery,
+} from "@/hooks/queries/use-public-changelog"
 
 export function PublicChangelogEntryContent({
   workspaceSlug,
@@ -24,9 +27,13 @@ export function PublicChangelogEntryContent({
 }) {
   const board = useBoardBySlugQuery({ workspaceSlug, boardSlug })
   const changelog = usePublicChangelogQuery(workspaceSlug)
-  if (!board.data || !changelog.data) return null
+  const entriesQuery = usePublicChangelogEntriesInfiniteQuery(workspaceSlug)
+  if (!board.data || !changelog.data || !entriesQuery.data) return null
 
-  const entry = changelog.data.entries.find((e) => e.id === entryId)
+  // Entries are paginated; the SSR seeded the first page (which
+  // contains this entry by construction since it was located there).
+  const entries = entriesQuery.data.pages.flatMap((p) => p.entries)
+  const entry = entries.find((e) => e.id === entryId)
   if (!entry) notFound()
 
   const when = entry.publishedAt ?? entry.createdAt

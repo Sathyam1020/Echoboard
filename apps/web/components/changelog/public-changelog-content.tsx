@@ -1,13 +1,19 @@
 "use client"
 
+import { useMemo } from "react"
+
 import { PublicFooter } from "@/components/boards/public-footer"
 import { PublicSidebar } from "@/components/boards/public-sidebar"
 import { PublicTopBar } from "@/components/boards/public-top-bar"
 import { ProductActivityCard } from "@/components/changelog/product-activity-card"
 import { PublicChangelog } from "@/components/changelog/public-changelog"
+import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
 import { PageEnter } from "@/components/common/page-enter"
 import { useBoardBySlugQuery } from "@/hooks/queries/use-board-by-slug"
-import { usePublicChangelogQuery } from "@/hooks/queries/use-public-changelog"
+import {
+  usePublicChangelogEntriesInfiniteQuery,
+  usePublicChangelogQuery,
+} from "@/hooks/queries/use-public-changelog"
 
 export function PublicChangelogContent({
   workspaceSlug,
@@ -16,11 +22,18 @@ export function PublicChangelogContent({
   workspaceSlug: string
   boardSlug: string
 }) {
-  // Two queries — board (for the top bar's tabs anchored to this board) and
-  // changelog (workspace-scoped, shared across all boards). Both prefetched
-  // on the server.
+  // Three queries — board (top bar tabs anchored to this board),
+  // changelog meta (workspace + firstBoard), and changelog entries
+  // (paginated). All prefetched on the server.
   const board = useBoardBySlugQuery({ workspaceSlug, boardSlug })
   const changelog = usePublicChangelogQuery(workspaceSlug)
+  const entriesQuery = usePublicChangelogEntriesInfiniteQuery(workspaceSlug)
+
+  const entries = useMemo(
+    () => entriesQuery.data?.pages.flatMap((p) => p.entries) ?? [],
+    [entriesQuery.data],
+  )
+
   if (!board.data || !changelog.data) return null
 
   return (
@@ -38,7 +51,7 @@ export function PublicChangelogContent({
       <PageEnter className="mx-auto max-w-5xl px-6 py-10">
         <div className="flex flex-col-reverse gap-8 lg:flex-row">
           <PublicSidebar className="lg:w-60 lg:flex-shrink-0">
-            <ProductActivityCard entries={changelog.data.entries} />
+            <ProductActivityCard entries={entries} />
           </PublicSidebar>
 
           <main className="min-w-0 flex-1">
@@ -52,9 +65,15 @@ export function PublicChangelogContent({
             </header>
 
             <PublicChangelog
-              entries={changelog.data.entries}
+              entries={entries}
               workspaceSlug={changelog.data.workspace.slug}
               boardSlug={board.data.board.slug}
+            />
+
+            <InfiniteScrollSentinel
+              hasNextPage={entriesQuery.hasNextPage ?? false}
+              isFetchingNextPage={entriesQuery.isFetchingNextPage}
+              onLoadMore={() => entriesQuery.fetchNextPage()}
             />
           </main>
         </div>

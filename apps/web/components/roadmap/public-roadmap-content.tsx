@@ -6,7 +6,7 @@ import { PublicTopBar } from "@/components/boards/public-top-bar"
 import { PageEnter } from "@/components/common/page-enter"
 import { PublicRoadmap } from "@/components/roadmap/public-roadmap"
 import { RoadmapStatsCard } from "@/components/roadmap/roadmap-stats-card"
-import { useBoardBySlugQuery } from "@/hooks/queries/use-board-by-slug"
+import { useBoardRoadmapQuery } from "@/hooks/queries/use-board-roadmap"
 
 export function PublicRoadmapContent({
   workspaceSlug,
@@ -15,7 +15,7 @@ export function PublicRoadmapContent({
   workspaceSlug: string
   boardSlug: string
 }) {
-  const { data } = useBoardBySlugQuery({ workspaceSlug, boardSlug })
+  const { data } = useBoardRoadmapQuery({ workspaceSlug, boardSlug })
   if (!data) return null
 
   return (

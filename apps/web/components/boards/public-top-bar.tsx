@@ -6,6 +6,7 @@ import Link from "next/link"
 import { SubmitPostDialog } from "./submit-post-dialog"
 
 type TabId = "feedback" | "roadmap" | "changelog"
+type BoardOption = { id: string; name: string; slug: string }
 
 export function PublicTopBar({
   workspaceName,
@@ -15,7 +16,7 @@ export function PublicTopBar({
   boardSlug,
   boardId,
   activeTab = "feedback",
-  hideSubmitDialog = false,
+  submitBoardOptions,
 }: {
   workspaceName: string
   workspaceSlug: string
@@ -24,9 +25,10 @@ export function PublicTopBar({
   boardSlug: string
   boardId: string
   activeTab?: TabId
-  /** Submit-post dialog requires a single target board. The all-feedback
-   *  view has no implicit target, so hide it there. */
-  hideSubmitDialog?: boolean
+  /** All-feedback view passes the workspace's public boards; the
+   *  submit dialog renders a board picker so visitors choose a target.
+   *  When omitted, the dialog uses the implicit `boardId` directly. */
+  submitBoardOptions?: BoardOption[]
 }) {
   const initial = (workspaceName.charAt(0) || "E").toUpperCase()
 
@@ -94,7 +96,18 @@ export function PublicTopBar({
           </nav>
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-3 sm:order-3">
-            {hideSubmitDialog ? null : (
+            {submitBoardOptions ? (
+              // Picker mode — visitors on the all-feedback view choose
+              // a target board inside the dialog. If the workspace has
+              // no public boards yet, omit the dialog entirely.
+              submitBoardOptions.length > 0 ? (
+                <SubmitPostDialog
+                  boards={submitBoardOptions}
+                  workspaceId={workspaceId}
+                  workspaceOwnerId={workspaceOwnerId}
+                />
+              ) : null
+            ) : (
               <SubmitPostDialog
                 boardId={boardId}
                 workspaceId={workspaceId}

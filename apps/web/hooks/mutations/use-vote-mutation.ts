@@ -2,71 +2,76 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-import { queryKeys } from "@/lib/query/keys"
-import type { BoardBySlugResponse } from "@/services/boards"
+import type { PostRow } from "@/components/boards/types"
+import type { PostsPage } from "@/services/boards"
 import { toggleVote, type VoteResult } from "@/services/votes"
 
-// Vote toggle. When `workspaceSlug` + `boardSlug` are provided, the
-// public-board cache is updated optimistically so list re-renders feel
-// instant. Without them (admin pages, post detail without the board cache)
-// the mutation just makes the network call — caller manages local state.
-export function useVoteMutation(args: {
-  workspaceSlug?: string
-  boardSlug?: string
-  postId: string
-}) {
+type InfinitePostsCache = {
+  pages: PostsPage<PostRow>[]
+  pageParams: unknown[]
+}
+
+function isInfinitePostsCache(value: unknown): value is InfinitePostsCache {
+  if (!value || typeof value !== "object") return false
+  const v = value as { pages?: unknown }
+  return Array.isArray(v.pages)
+}
+
+// Vote toggle. The public board feed and the all-feedback feed both
+// live in cursor-paginated `useInfiniteQuery` caches, so we walk every
+// `["boards", ...]` cache, locate the post in any page, and patch its
+// vote count / hasVoted in place. Saves an invalidation round-trip and
+// keeps the UI snappy.
+export function useVoteMutation(args: { postId: string }) {
   const qc = useQueryClient()
-  const cacheKey =
-    args.workspaceSlug && args.boardSlug
-      ? queryKeys.boards.bySlug(args.workspaceSlug, args.boardSlug)
-      : null
+
+  // Build a snapshot patcher applied to every matching cache entry. The
+  // boards prefix matches both `bySlugPosts` and `allFeedbackPosts`
+  // entries — also matches `bySlug` metadata + `allFeedback` metadata
+  // but those don't have `pages`, so the early-return skips them.
+  function patchPost(updater: (p: PostRow) => PostRow) {
+    qc.setQueriesData(
+      { queryKey: ["boards"] },
+      (cur: unknown) => {
+        if (!isInfinitePostsCache(cur)) return cur
+        return {
+          ...cur,
+          pages: cur.pages.map((page) => ({
+            ...page,
+            posts: page.posts.map((p) =>
+              p.id === args.postId ? updater(p) : p,
+            ),
+          })),
+        }
+      },
+    )
+  }
 
   return useMutation({
     mutationFn: () => toggleVote(args.postId),
 
-    onMutate: async (): Promise<{ previous: BoardBySlugResponse | undefined }> => {
-      if (!cacheKey) return { previous: undefined }
-      await qc.cancelQueries({ queryKey: cacheKey })
-      const previous = qc.getQueryData<BoardBySlugResponse>(cacheKey)
-      if (!previous) return { previous: undefined }
-
-      qc.setQueryData<BoardBySlugResponse>(cacheKey, (cur) => {
-        if (!cur) return cur
-        return {
-          ...cur,
-          posts: cur.posts.map((p) =>
-            p.id !== args.postId
-              ? p
-              : {
-                  ...p,
-                  hasVoted: !p.hasVoted,
-                  voteCount: p.hasVoted ? p.voteCount - 1 : p.voteCount + 1,
-                },
-          ),
-        }
-      })
-
-      return { previous }
+    onMutate: async () => {
+      // Optimistic flip — keeps the vote button feeling instant.
+      patchPost((p) => ({
+        ...p,
+        hasVoted: !p.hasVoted,
+        voteCount: p.hasVoted ? p.voteCount - 1 : p.voteCount + 1,
+      }))
     },
 
-    onError: (_err, _vars, ctx) => {
-      if (!cacheKey || !ctx?.previous) return
-      qc.setQueryData(cacheKey, ctx.previous)
+    onError: () => {
+      // Server rejected — re-fetch to pull the authoritative state.
+      // Cheaper to invalidate than to track the pre-mutation snapshot
+      // across N pages.
+      void qc.invalidateQueries({ queryKey: ["boards"] })
     },
 
     onSuccess: (result: VoteResult) => {
-      if (!cacheKey) return
-      qc.setQueryData<BoardBySlugResponse>(cacheKey, (cur) => {
-        if (!cur) return cur
-        return {
-          ...cur,
-          posts: cur.posts.map((p) =>
-            p.id !== args.postId
-              ? p
-              : { ...p, hasVoted: result.hasVoted, voteCount: result.voteCount },
-          ),
-        }
-      })
+      patchPost((p) => ({
+        ...p,
+        hasVoted: result.hasVoted,
+        voteCount: result.voteCount,
+      }))
     },
   })
 }

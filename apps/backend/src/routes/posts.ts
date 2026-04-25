@@ -1,4 +1,4 @@
-import { and, asc, db, desc, eq, sql } from "@workspace/db/client"
+import { and, asc, db, desc, eq, gt, or, sql } from "@workspace/db/client"
 import {
   board,
   comment,
@@ -12,6 +12,12 @@ import { randomUUID } from "node:crypto"
 import { Router, type Request, type Response } from "express"
 import { z } from "zod"
 
+import {
+  decodeCursor,
+  encodeCursor,
+  isCommentsCursor,
+  PAGE_SIZE,
+} from "../lib/cursor.js"
 import {
   serializeComment,
   type CommentRow,
@@ -158,7 +164,7 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
         [] as Array<{ id: string; title: string }>,
       )
 
-  const [voteCountRes, votedRows, voterRows, mergedTargetRows, commentRows] =
+  const [voteCountRes, votedRows, voterRows, mergedTargetRows] =
     await Promise.all([
       db.execute(sql`
         SELECT COUNT(*)::int AS count FROM post_vote WHERE post_id = ${postId}
@@ -166,24 +172,6 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
       hasVotedQuery,
       votersQuery,
       mergedIntoQuery,
-      db
-        .select({
-          id: comment.id,
-          postId: comment.postId,
-          parentId: comment.parentId,
-          authorId: comment.authorId,
-          body: comment.body,
-          editedAt: comment.editedAt,
-          deletedAt: comment.deletedAt,
-          createdAt: comment.createdAt,
-          updatedAt: comment.updatedAt,
-          authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
-        })
-        .from(comment)
-        .leftJoin(user, eq(comment.authorId, user.id))
-        .leftJoin(visitor, eq(comment.visitorId, visitor.id))
-        .where(eq(comment.postId, postId))
-        .orderBy(asc(comment.createdAt)),
     ])
 
   const voteCount =
@@ -203,11 +191,6 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
     mergedIntoId && mergedTargetRows[0]
       ? { id: mergedTargetRows[0].id, title: mergedTargetRows[0].title }
       : null
-
-  const workspaceOwnerId = row.workspace.ownerId
-  const comments = commentRows.map((r) =>
-    serializeComment(r as CommentRow, workspaceOwnerId),
-  )
 
   res.json({
     post: {
@@ -235,9 +218,100 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
         ownerId: row.workspace.ownerId,
       },
     },
-    comments,
   })
 })
+
+// GET /api/posts/:postId/comments?cursor= — paginated comments.
+// Sort is ascending (chronological — comment threads read top to
+// bottom). Cursor encodes (createdAt, id) of the last comment seen.
+postsRouter.get(
+  "/:postId/comments",
+  async (req: Request, res: Response) => {
+    const postId = req.params.postId
+    if (typeof postId !== "string" || !postId) {
+      throw new AppError("Invalid post id", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    // Confirm post exists + load workspace owner for serializeComment.
+    const [meta] = await db
+      .select({
+        postId: post.id,
+        workspaceOwnerId: workspace.ownerId,
+      })
+      .from(post)
+      .innerJoin(board, eq(post.boardId, board.id))
+      .innerJoin(workspace, eq(board.workspaceId, workspace.id))
+      .where(eq(post.id, postId))
+    if (!meta) {
+      throw new AppError("Post not found", {
+        status: 404,
+        code: "POST_NOT_FOUND",
+      })
+    }
+
+    const cursor = decodeCursor(
+      typeof req.query.cursor === "string" ? req.query.cursor : null,
+      isCommentsCursor,
+    )
+    const limit = PAGE_SIZE.comments
+
+    // Cursor predicate — comments paginate forward in time
+    // (createdAt ASC). "After this cursor" = strictly later.
+    // Drizzle requires typed helpers (gt/eq/or) for the predicate to
+    // actually reach SQL — raw `sql` fragments inside `and()` are
+    // dropped by the runtime guard.
+    const cursorWhere = cursor
+      ? or(
+          gt(comment.createdAt, new Date(cursor.ca)),
+          and(
+            eq(comment.createdAt, new Date(cursor.ca)),
+            gt(comment.id, cursor.id),
+          ),
+        )
+      : undefined
+
+    const rows = await db
+      .select({
+        id: comment.id,
+        postId: comment.postId,
+        parentId: comment.parentId,
+        authorId: comment.authorId,
+        body: comment.body,
+        editedAt: comment.editedAt,
+        deletedAt: comment.deletedAt,
+        createdAt: comment.createdAt,
+        updatedAt: comment.updatedAt,
+        authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
+      })
+      .from(comment)
+      .leftJoin(user, eq(comment.authorId, user.id))
+      .leftJoin(visitor, eq(comment.visitorId, visitor.id))
+      .where(and(eq(comment.postId, postId), cursorWhere))
+      .orderBy(asc(comment.createdAt), asc(comment.id))
+      .limit(limit + 1)
+
+    const hasNext = rows.length > limit
+    const pageRows = hasNext ? rows.slice(0, limit) : rows
+    const comments = pageRows.map((r) =>
+      serializeComment(r as CommentRow, meta.workspaceOwnerId),
+    )
+
+    let nextCursor: string | null = null
+    if (hasNext && pageRows.length > 0) {
+      const last = pageRows[pageRows.length - 1]!
+      nextCursor = encodeCursor({
+        k: "comments",
+        ca: last.createdAt.toISOString(),
+        id: last.id,
+      })
+    }
+
+    res.json({ comments, nextCursor })
+  },
+)
 
 const updatePostStatusBody = z.object({
   status: z.enum(["review", "planned", "progress", "shipped"]),

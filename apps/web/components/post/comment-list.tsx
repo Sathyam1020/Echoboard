@@ -1,9 +1,11 @@
 "use client"
 
 import { MessageSquare } from "lucide-react"
-import { useCallback, useMemo, useState } from "react"
+import { useMemo } from "react"
 
 import { EmptyHint } from "@/components/common/empty-hint"
+import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
+import { usePostCommentsInfiniteQuery } from "@/hooks/queries/use-post-comments"
 
 import type { CommentRow } from "../boards/types"
 
@@ -35,7 +37,6 @@ export function CommentList({
   postId,
   workspaceId,
   workspaceOwnerId,
-  initialComments,
 }: {
   postId: string
   // workspaceId is optional so the admin dashboard's CommentList still
@@ -43,20 +44,21 @@ export function CommentList({
   // gates anonymous comments through the identity modal.
   workspaceId?: string
   workspaceOwnerId: string
-  initialComments: CommentRow[]
 }) {
-  const [comments, setComments] = useState<CommentRow[]>(initialComments)
+  // Cache is fed by SSR (first page) + paginated fetches as the user
+  // scrolls. Mutations (create/edit/delete) patch the cache directly,
+  // so callbacks below are inert — left as a no-op in case child
+  // components ever rely on them again.
+  const query = usePostCommentsInfiniteQuery(postId)
+  const comments: CommentRow[] = useMemo(
+    () => query.data?.pages.flatMap((p) => p.comments) ?? [],
+    [query.data],
+  )
 
   const tree = useMemo(() => buildTree(comments), [comments])
   const liveCount = comments.filter((c) => !c.deletedAt).length
 
-  const addComment = useCallback((c: CommentRow) => {
-    setComments((prev) => [...prev, c])
-  }, [])
-
-  const updateComment = useCallback((c: CommentRow) => {
-    setComments((prev) => prev.map((p) => (p.id === c.id ? c : p)))
-  }, [])
+  const noop = (_c: CommentRow) => {}
 
   return (
     <section className="flex flex-col gap-6">
@@ -77,7 +79,7 @@ export function CommentList({
             ? { workspaceId, workspaceOwnerId }
             : undefined
         }
-        onSuccess={addComment}
+        onSuccess={noop}
       />
 
       {tree.length === 0 ? (
@@ -97,12 +99,19 @@ export function CommentList({
               postId={postId}
               workspaceId={workspaceId}
               workspaceOwnerId={workspaceOwnerId}
-              onAdd={addComment}
-              onUpdate={updateComment}
+              onAdd={noop}
+              onUpdate={noop}
             />
           ))}
         </div>
       )}
+
+      <InfiniteScrollSentinel
+        hasNextPage={query.hasNextPage ?? false}
+        isFetchingNextPage={query.isFetchingNextPage}
+        onLoadMore={() => query.fetchNextPage()}
+        endLabel=""
+      />
     </section>
   )
 }

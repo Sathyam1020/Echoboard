@@ -2,13 +2,15 @@
 
 import { cn } from "@workspace/ui/lib/utils"
 
-export type SortOption = "newest" | "oldest" | "votes"
+// Sort matches the server-side cursor pagination contract — "oldest"
+// dropped because it requires a different cursor space (asc) the API
+// doesn't currently support; visitors who want oldest can keep
+// scrolling on Newest.
+export type SortOption = "newest" | "votes"
 
 const OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "newest", label: "Newest" },
-  { value: "oldest", label: "Oldest" },
   { value: "votes", label: "Most voted" },
-  // When comments land, unhide: { value: "trending", label: "Trending" }
 ]
 
 export function SortPills({

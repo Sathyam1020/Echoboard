@@ -73,7 +73,14 @@ export type PostDetail = {
   viewerIsOwner: boolean
 }
 
+// Post detail response no longer carries comments — they're paginated
+// via `/api/posts/:postId/comments`. See `CommentsPage`.
 export type PostDetailResponse = {
   post: PostDetail
+}
+
+export type CommentsPage = {
   comments: CommentRow[]
+  /** null → no more pages. */
+  nextCursor: string | null
 }

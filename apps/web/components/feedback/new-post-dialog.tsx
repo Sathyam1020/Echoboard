@@ -28,7 +28,7 @@ export function NewPostDialog({ boardId }: { boardId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const mutation = useCreatePostMutation(boardId)
+  const mutation = useCreatePostMutation()
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -36,6 +36,7 @@ export function NewPostDialog({ boardId }: { boardId: string }) {
     startTransition(async () => {
       try {
         const res = await mutation.mutateAsync({
+          boardId,
           title: title.trim(),
           description: description.trim(),
         })

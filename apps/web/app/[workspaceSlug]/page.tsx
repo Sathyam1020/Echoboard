@@ -7,7 +7,10 @@ import { ApiError } from "@/lib/http/api-error"
 import { makeQueryClient } from "@/lib/query/query-client"
 import { queryKeys } from "@/lib/query/keys"
 import { absoluteUrl } from "@/lib/seo"
-import { fetchAllFeedbackSSR } from "@/services/boards.server"
+import {
+  fetchAllFeedbackPostsSSR,
+  fetchAllFeedbackSSR,
+} from "@/services/boards.server"
 
 type RouteParams = { workspaceSlug: string }
 
@@ -55,10 +58,18 @@ export default async function PublicAllFeedbackPage({
   const queryClient = makeQueryClient()
 
   try {
-    const data = await fetchAllFeedbackSSR(workspaceSlug)
+    // Default initial sort = "votes" matches `PublicAllFeedbackContent`.
+    const [meta, postsPage] = await Promise.all([
+      fetchAllFeedbackSSR(workspaceSlug),
+      fetchAllFeedbackPostsSSR({ workspaceSlug, sort: "votes" }),
+    ])
     queryClient.setQueryData(
       queryKeys.boards.allFeedback(workspaceSlug),
-      data,
+      meta,
+    )
+    queryClient.setQueryData(
+      queryKeys.boards.allFeedbackPosts(workspaceSlug, "votes", ""),
+      { pages: [postsPage], pageParams: [null] },
     )
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound()

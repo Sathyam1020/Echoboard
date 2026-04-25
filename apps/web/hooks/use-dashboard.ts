@@ -1,8 +1,9 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 
 import { queryKeys } from "@/lib/query/keys"
+import type { SortOption } from "@/services/boards"
 import {
   fetchAdminPostsByBoard,
   fetchDashboardBoards,
@@ -32,10 +33,22 @@ export function useRecentPostsQuery() {
   })
 }
 
-export function useAdminPostsByBoardQuery(boardId: string) {
-  return useQuery({
-    queryKey: queryKeys.boards.posts(boardId),
-    queryFn: () => fetchAdminPostsByBoard(boardId),
-    enabled: !!boardId,
+export function useAdminPostsByBoardInfiniteQuery(args: {
+  boardId: string
+  sort: SortOption
+  search: string
+}) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.boards.posts(args.boardId, args.sort, args.search),
+    queryFn: ({ pageParam }) =>
+      fetchAdminPostsByBoard({
+        boardId: args.boardId,
+        cursor: pageParam,
+        sort: args.sort,
+        search: args.search,
+      }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!args.boardId,
   })
 }
