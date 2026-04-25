@@ -3,16 +3,13 @@
 import { ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { useEffect, useMemo } from "react"
 
 import { AdminPageShell } from "@/components/app-shell/admin-page-shell"
 import { AppTopbar } from "@/components/app-shell/app-topbar"
 import { FeedbackBoardSwitcher } from "@/components/feedback/feedback-board-switcher"
 import { AdminRoadmap } from "@/components/roadmap/admin-roadmap"
-import {
-  useAdminPostsByBoardInfiniteQuery,
-  useDashboardBoardsQuery,
-} from "@/hooks/use-dashboard"
+import { useBoardRoadmapQuery } from "@/hooks/queries/use-board-roadmap"
+import { useDashboardBoardsQuery } from "@/hooks/use-dashboard"
 
 export function AdminRoadmapContent() {
   const boardsQuery = useDashboardBoardsQuery()
@@ -22,32 +19,15 @@ export function AdminRoadmapContent() {
   const boards = boardsQuery.data?.boards ?? []
   const activeBoard =
     boards.find((b) => b.boardId === boardIdParam) ?? boards[0]
-  const postsQuery = useAdminPostsByBoardInfiniteQuery({
-    boardId: activeBoard?.boardId ?? "",
-    sort: "newest",
-    search: "",
+
+  // Reuse the non-paginated public roadmap endpoint — same shape we
+  // need (all planned/in-progress + recent shipped, capped server-side).
+  const roadmap = useBoardRoadmapQuery({
+    workspaceSlug: activeBoard?.workspaceSlug ?? "",
+    boardSlug: activeBoard?.boardSlug ?? "",
   })
 
-  // Roadmap groups by status, so we need every post — auto-fetch the
-  // next page as long as one exists. Bounded by the user's actual post
-  // count, capped at a generous safety stop in case something
-  // misbehaves.
-  useEffect(() => {
-    if (
-      postsQuery.hasNextPage &&
-      !postsQuery.isFetchingNextPage &&
-      (postsQuery.data?.pages.length ?? 0) < 50
-    ) {
-      void postsQuery.fetchNextPage()
-    }
-  }, [postsQuery])
-
-  const posts = useMemo(
-    () => postsQuery.data?.pages.flatMap((p) => p.posts) ?? [],
-    [postsQuery.data],
-  )
-
-  if (!boardsQuery.data || !activeBoard || !postsQuery.data) return null
+  if (!boardsQuery.data || !activeBoard || !roadmap.data) return null
   const publicHref = `/${encodeURIComponent(activeBoard.workspaceSlug)}/${encodeURIComponent(activeBoard.boardSlug)}/roadmap`
 
   return (
@@ -88,7 +68,7 @@ export function AdminRoadmapContent() {
       />
 
       <div className="px-4 py-6 sm:px-8">
-        <AdminRoadmap posts={posts} />
+        <AdminRoadmap posts={roadmap.data.posts} />
       </div>
     </AdminPageShell>
   )

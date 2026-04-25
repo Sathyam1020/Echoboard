@@ -5,10 +5,8 @@ import { AdminRoadmapContent } from "@/components/roadmap/admin-roadmap-content"
 import { getSession } from "@/lib/get-session"
 import { queryKeys } from "@/lib/query/keys"
 import { makeQueryClient } from "@/lib/query/query-client"
-import {
-  fetchAdminPostsByBoardSSR,
-  fetchDashboardBoardsSSR,
-} from "@/services/dashboard.server"
+import { fetchBoardRoadmapSSR } from "@/services/boards.server"
+import { fetchDashboardBoardsSSR } from "@/services/dashboard.server"
 
 export default async function RoadmapPage({
   searchParams,
@@ -28,15 +26,17 @@ export default async function RoadmapPage({
 
   const activeBoard =
     boards.boards.find((b) => b.boardId === boardIdParam) ?? boards.boards[0]!
-  // Roadmap auto-fetches subsequent pages on the client until exhausted
-  // (see AdminRoadmapContent). Seed page 1 here so first paint renders.
-  const postsPage = await fetchAdminPostsByBoardSSR({
-    boardId: activeBoard.boardId,
-    sort: "newest",
+
+  const roadmap = await fetchBoardRoadmapSSR({
+    workspaceSlug: activeBoard.workspaceSlug,
+    boardSlug: activeBoard.boardSlug,
   })
   queryClient.setQueryData(
-    queryKeys.boards.posts(activeBoard.boardId, "newest", ""),
-    { pages: [postsPage], pageParams: [null] },
+    queryKeys.boards.roadmap(
+      activeBoard.workspaceSlug,
+      activeBoard.boardSlug,
+    ),
+    roadmap,
   )
 
   return (
