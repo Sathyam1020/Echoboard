@@ -7,21 +7,40 @@ import { authClient } from "@/lib/auth-client"
 
 import { UserMenu } from "./user-menu"
 
-export function AuthNavSlot() {
-  const { data, isPending } = authClient.useSession()
+export type InitialAuth = {
+  name: string
+  email: string
+  image: string | null
+} | null
 
-  if (isPending) {
-    return <div className="size-7" aria-hidden />
+// Auth slot in the marketing nav. Receives `initialAuth` from the server
+// page so the right shell (avatar OR sign-in buttons) is in the initial
+// HTML. We still subscribe to `useSession` for live updates (e.g. the user
+// signs out from another tab), but the *initial* render no longer waits
+// for a client-side session round-trip — that wait was making the avatar
+// the LCP at ~8s on throttled connections.
+function resolveAuth(
+  live: ReturnType<typeof authClient.useSession>,
+  initial: InitialAuth,
+): InitialAuth {
+  // Until live data arrives, trust the server-provided value.
+  if (live.isPending) return initial
+  if (live.data?.user) {
+    return {
+      name: live.data.user.name,
+      email: live.data.user.email,
+      image: live.data.user.image ?? null,
+    }
   }
+  return null
+}
 
-  if (data?.user) {
-    return (
-      <UserMenu
-        name={data.user.name}
-        email={data.user.email}
-        image={data.user.image}
-      />
-    )
+export function AuthNavSlot({ initialAuth }: { initialAuth: InitialAuth }) {
+  const live = authClient.useSession()
+  const auth = resolveAuth(live, initialAuth)
+
+  if (auth) {
+    return <UserMenu name={auth.name} email={auth.email} image={auth.image} />
   }
 
   return (
@@ -39,12 +58,17 @@ export function AuthNavSlot() {
   )
 }
 
-export function AuthNavSlotMobile({ onSelect }: { onSelect?: () => void }) {
-  const { data, isPending } = authClient.useSession()
+export function AuthNavSlotMobile({
+  initialAuth,
+  onSelect,
+}: {
+  initialAuth: InitialAuth
+  onSelect?: () => void
+}) {
+  const live = authClient.useSession()
+  const auth = resolveAuth(live, initialAuth)
 
-  if (isPending) return null
-
-  if (data?.user) {
+  if (auth) {
     return (
       <div className="mt-6 flex flex-col gap-2">
         <Button
@@ -79,11 +103,7 @@ export function AuthNavSlotMobile({ onSelect }: { onSelect?: () => void }) {
       >
         <Link href="/signin">Log in</Link>
       </Button>
-      <Button
-        asChild
-        className="w-full shadow-none"
-        onClick={onSelect}
-      >
+      <Button asChild className="w-full shadow-none" onClick={onSelect}>
         <Link href="/signup">Start free →</Link>
       </Button>
     </div>

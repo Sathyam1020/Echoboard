@@ -65,19 +65,27 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
     })
   }
 
-  const [row] = await db
-    .select({
-      post: post,
-      board: board,
-      workspace: workspace,
-      authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
-    })
-    .from(post)
-    .innerJoin(board, eq(post.boardId, board.id))
-    .innerJoin(workspace, eq(board.workspaceId, workspace.id))
-    .leftJoin(user, eq(post.authorId, user.id))
-    .leftJoin(visitor, eq(post.visitorId, visitor.id))
-    .where(eq(post.id, postId))
+  // Fan out: post lookup + actor resolution in parallel. Actor is derived
+  // from cookies/session (no SQL coupling to the post), so this is a free
+  // overlap.
+  const { readOptionalActor } = await import("./boards.js")
+  const [row, actor] = await Promise.all([
+    db
+      .select({
+        post: post,
+        board: board,
+        workspace: workspace,
+        authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
+      })
+      .from(post)
+      .innerJoin(board, eq(post.boardId, board.id))
+      .innerJoin(workspace, eq(board.workspaceId, workspace.id))
+      .leftJoin(user, eq(post.authorId, user.id))
+      .leftJoin(visitor, eq(post.visitorId, visitor.id))
+      .where(eq(post.id, postId))
+      .then((rows) => rows[0]),
+    readOptionalActor(req),
+  ])
 
   if (!row) {
     throw new AppError("Post not found", {
@@ -87,98 +95,114 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
   }
 
   // viewerIsOwner is admin-only — visitor identity never makes you an admin.
-  const userId = await readOptionalUserId(req)
+  // Derive from the actor we already have instead of a second lookup.
+  const userId = actor.kind === "user" ? actor.userId : null
   const viewerIsOwner = userId !== null && userId === row.workspace.ownerId
-  // Resolve the actor (visitor cookie wins over admin session) so we can
-  // tell the FE whether the current viewer has voted on this post.
-  const { readOptionalActor } = await import("./boards.js")
-  const actor = await readOptionalActor(req)
 
-  // If this post was merged into another, attach a `mergedInto` pointer so the
-  // frontend can redirect. The source row keeps existing, but has no votes/
-  // comments left (those were moved during the merge).
-  let mergedInto: { id: string; title: string } | null = null
-  if (row.post.mergedIntoPostId) {
-    const [target] = await db
-      .select({ id: post.id, title: post.title })
-      .from(post)
-      .where(eq(post.id, row.post.mergedIntoPostId))
-    if (target) {
-      mergedInto = { id: target.id, title: target.title }
-    }
-  }
+  // Now fan out the rest: comments, vote count, optional vote-by-actor lookup,
+  // optional voter list (admin only), optional mergedInto target (rare).
+  // All independent — single Promise.all instead of 4-5 sequential awaits.
+  const mergedIntoId = row.post.mergedIntoPostId
 
-  const voteCountRes = await db.execute(sql`
-    SELECT COUNT(*)::int AS count FROM post_vote WHERE post_id = ${postId}
-  `)
+  const hasVotedQuery: Promise<{ postId: string }[]> =
+    actor.kind === "user"
+      ? db
+          .select({ postId: postVote.postId })
+          .from(postVote)
+          .where(
+            and(eq(postVote.postId, postId), eq(postVote.userId, actor.userId)),
+          )
+      : actor.kind === "visitor"
+        ? db
+            .select({ postId: postVote.postId })
+            .from(postVote)
+            .where(
+              and(
+                eq(postVote.postId, postId),
+                eq(postVote.visitorId, actor.visitorId),
+              ),
+            )
+        : Promise.resolve([])
+
+  const votersQuery = viewerIsOwner
+    ? db
+        .select({
+          userId: user.id,
+          userName: user.name,
+          visitorId: visitor.id,
+          visitorName: visitor.name,
+          votedAt: postVote.createdAt,
+        })
+        .from(postVote)
+        .leftJoin(user, eq(postVote.userId, user.id))
+        .leftJoin(visitor, eq(postVote.visitorId, visitor.id))
+        .where(eq(postVote.postId, postId))
+        .orderBy(desc(postVote.createdAt))
+        .limit(20)
+    : Promise.resolve(
+        [] as Array<{
+          userId: string | null
+          userName: string | null
+          visitorId: string | null
+          visitorName: string | null
+          votedAt: Date
+        }>,
+      )
+
+  const mergedIntoQuery = mergedIntoId
+    ? db
+        .select({ id: post.id, title: post.title })
+        .from(post)
+        .where(eq(post.id, mergedIntoId))
+    : Promise.resolve(
+        [] as Array<{ id: string; title: string }>,
+      )
+
+  const [voteCountRes, votedRows, voterRows, mergedTargetRows, commentRows] =
+    await Promise.all([
+      db.execute(sql`
+        SELECT COUNT(*)::int AS count FROM post_vote WHERE post_id = ${postId}
+      `),
+      hasVotedQuery,
+      votersQuery,
+      mergedIntoQuery,
+      db
+        .select({
+          id: comment.id,
+          postId: comment.postId,
+          parentId: comment.parentId,
+          authorId: comment.authorId,
+          body: comment.body,
+          editedAt: comment.editedAt,
+          deletedAt: comment.deletedAt,
+          createdAt: comment.createdAt,
+          updatedAt: comment.updatedAt,
+          authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
+        })
+        .from(comment)
+        .leftJoin(user, eq(comment.authorId, user.id))
+        .leftJoin(visitor, eq(comment.visitorId, visitor.id))
+        .where(eq(comment.postId, postId))
+        .orderBy(asc(comment.createdAt)),
+    ])
+
   const voteCount =
     (voteCountRes.rows as Array<{ count: number }>)[0]?.count ?? 0
+  const hasVoted = votedRows.length > 0
 
-  let hasVoted = false
-  if (actor.kind === "user") {
-    const [voted] = await db
-      .select({ postId: postVote.postId })
-      .from(postVote)
-      .where(
-        and(eq(postVote.postId, postId), eq(postVote.userId, actor.userId)),
-      )
-    hasVoted = Boolean(voted)
-  } else if (actor.kind === "visitor") {
-    const [voted] = await db
-      .select({ postId: postVote.postId })
-      .from(postVote)
-      .where(
-        and(
-          eq(postVote.postId, postId),
-          eq(postVote.visitorId, actor.visitorId),
-        ),
-      )
-    hasVoted = Boolean(voted)
-  }
+  const voters: Array<{ id: string; name: string; votedAt: string }> | null =
+    viewerIsOwner
+      ? voterRows.map((v) => ({
+          id: v.userId ?? v.visitorId ?? "",
+          name: v.userName ?? v.visitorName ?? "Unknown",
+          votedAt: v.votedAt.toISOString(),
+        }))
+      : null
 
-  // Voter list is admin-only. Top 20 most recent voters with names for the
-  // sidebar. Voter could be either a user (admin) or a visitor (end-user).
-  let voters: Array<{ id: string; name: string; votedAt: string }> | null = null
-  if (viewerIsOwner) {
-    const voterRows = await db
-      .select({
-        userId: user.id,
-        userName: user.name,
-        visitorId: visitor.id,
-        visitorName: visitor.name,
-        votedAt: postVote.createdAt,
-      })
-      .from(postVote)
-      .leftJoin(user, eq(postVote.userId, user.id))
-      .leftJoin(visitor, eq(postVote.visitorId, visitor.id))
-      .where(eq(postVote.postId, postId))
-      .orderBy(desc(postVote.createdAt))
-      .limit(20)
-    voters = voterRows.map((v) => ({
-      id: v.userId ?? v.visitorId ?? "",
-      name: v.userName ?? v.visitorName ?? "Unknown",
-      votedAt: v.votedAt.toISOString(),
-    }))
-  }
-
-  const commentRows = await db
-    .select({
-      id: comment.id,
-      postId: comment.postId,
-      parentId: comment.parentId,
-      authorId: comment.authorId,
-      body: comment.body,
-      editedAt: comment.editedAt,
-      deletedAt: comment.deletedAt,
-      createdAt: comment.createdAt,
-      updatedAt: comment.updatedAt,
-      authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
-    })
-    .from(comment)
-    .leftJoin(user, eq(comment.authorId, user.id))
-    .leftJoin(visitor, eq(comment.visitorId, visitor.id))
-    .where(eq(comment.postId, postId))
-    .orderBy(asc(comment.createdAt))
+  const mergedInto =
+    mergedIntoId && mergedTargetRows[0]
+      ? { id: mergedTargetRows[0].id, title: mergedTargetRows[0].title }
+      : null
 
   const workspaceOwnerId = row.workspace.ownerId
   const comments = commentRows.map((r) =>

@@ -5,6 +5,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { cn } from "@workspace/ui/lib/utils"
 import { ArrowLeft, ArrowRight } from "lucide-react"
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useRef, useState, useTransition } from "react"
@@ -20,8 +21,21 @@ import { publishChangelogEntry } from "@/services/changelog-admin"
 import { applyMarkdown, type MarkdownAction } from "./apply-markdown"
 import { EditorToolbar } from "./editor-toolbar"
 import { LinkedPostsPanel } from "./linked-posts-panel"
-import { MarkdownBody } from "./markdown-body"
 import type { ChangelogEntry, ShippedPost } from "./types"
+
+// Lazy-load the markdown renderer (react-markdown + remark-gfm +
+// rehype-sanitize is ~80KB). It's only mounted in preview mode — most
+// edit-tab time doesn't need it. Keeps the libs out of the initial bundle
+// for /dashboard/changelog/new and .../[entryId]/edit.
+const MarkdownBody = dynamic(
+  () => import("./markdown-body").then((m) => m.MarkdownBody),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-[13px] text-muted-foreground">Loading preview…</p>
+    ),
+  },
+)
 
 type Mode = "create" | "edit"
 

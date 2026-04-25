@@ -11,10 +11,16 @@ import {
   updateWorkspaceSettings,
 } from "@/services/workspaces"
 
+// Workspace + settings rarely change. Bump above the global 60s default so
+// navigating between settings tabs doesn't refetch every time. Mutations
+// (regen key, settings update, workspace create) invalidate explicitly.
+const FIVE_MINUTES = 5 * 60 * 1000
+
 export function useWorkspacesMeQuery() {
   return useQuery({
     queryKey: queryKeys.workspaces.me(),
     queryFn: fetchWorkspacesMe,
+    staleTime: FIVE_MINUTES,
   })
 }
 
@@ -22,6 +28,7 @@ export function useWorkspaceSettingsQuery() {
   return useQuery({
     queryKey: queryKeys.workspaces.settings(),
     queryFn: fetchWorkspaceSettings,
+    staleTime: FIVE_MINUTES,
   })
 }
 

@@ -14,14 +14,18 @@ import {
 } from "@workspace/ui/components/sheet"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { AuthNavSlot, AuthNavSlotMobile } from "@/components/nav/auth-nav-slot"
+import {
+  AuthNavSlot,
+  AuthNavSlotMobile,
+  type InitialAuth,
+} from "@/components/nav/auth-nav-slot"
 
 const NAV_LINKS = [
   { href: "#demo", id: "demo", label: "Product" },
   { href: "#pricing", id: "pricing", label: "Pricing" },
 ] as const
 
-export function Nav() {
+export function Nav({ initialAuth }: { initialAuth: InitialAuth }) {
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState<string | null>(null)
 
@@ -115,7 +119,7 @@ export function Nav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 md:ml-0 md:gap-3">
-          <AuthNavSlot />
+          <AuthNavSlot initialAuth={initialAuth} />
 
           <Sheet>
             <SheetTrigger asChild>
@@ -157,7 +161,7 @@ export function Nav() {
 
               <SheetClose asChild>
                 <div>
-                  <AuthNavSlotMobile />
+                  <AuthNavSlotMobile initialAuth={initialAuth} />
                 </div>
               </SheetClose>
             </SheetContent>

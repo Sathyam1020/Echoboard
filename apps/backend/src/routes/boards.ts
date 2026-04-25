@@ -48,67 +48,76 @@ async function enrichPostsWithVotes(
   if (posts.length === 0) return []
   const ids = posts.map((p) => p.id)
 
-  const countRows = await db
-    .select({
-      postId: postVote.postId,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(postVote)
-    .where(inArray(postVote.postId, ids))
-    .groupBy(postVote.postId)
+  // All four enrichment queries are independent — they only depend on the
+  // post id list. Used to be sequential awaits (4 round-trips on the Neon
+  // HTTP driver, ~600ms+ at typical latency); now in parallel (max of one).
+  const votedQuery: Promise<{ postId: string }[]> =
+    actor.kind === "user"
+      ? db
+          .select({ postId: postVote.postId })
+          .from(postVote)
+          .where(
+            and(
+              eq(postVote.userId, actor.userId),
+              inArray(postVote.postId, ids),
+            ),
+          )
+      : actor.kind === "visitor"
+        ? db
+            .select({ postId: postVote.postId })
+            .from(postVote)
+            .where(
+              and(
+                eq(postVote.visitorId, actor.visitorId),
+                inArray(postVote.postId, ids),
+              ),
+            )
+        : Promise.resolve([])
+
+  const [countRows, votedRows, commentCountRows, latestRes] = await Promise.all(
+    [
+      db
+        .select({
+          postId: postVote.postId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(postVote)
+        .where(inArray(postVote.postId, ids))
+        .groupBy(postVote.postId),
+      votedQuery,
+      db
+        .select({
+          postId: comment.postId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(comment)
+        .where(and(inArray(comment.postId, ids), isNull(comment.deletedAt)))
+        .groupBy(comment.postId),
+      db.execute(sql`
+        SELECT DISTINCT ON (c.post_id)
+          c.id AS id,
+          c.post_id AS "postId",
+          c.body AS body,
+          c.created_at AS "createdAt",
+          u.id AS "authorId",
+          u.name AS "authorName"
+        FROM comment c
+        LEFT JOIN "user" u ON u.id = c.author_id
+        WHERE c.post_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
+          AND c.deleted_at IS NULL
+        ORDER BY c.post_id, c.created_at DESC
+      `),
+    ],
+  )
+
   const counts = new Map<string, number>()
   for (const r of countRows) counts.set(r.postId, r.count)
 
-  let votedSet = new Set<string>()
-  if (actor.kind === "user") {
-    const votedRows = await db
-      .select({ postId: postVote.postId })
-      .from(postVote)
-      .where(
-        and(
-          eq(postVote.userId, actor.userId),
-          inArray(postVote.postId, ids),
-        ),
-      )
-    votedSet = new Set(votedRows.map((r) => r.postId))
-  } else if (actor.kind === "visitor") {
-    const votedRows = await db
-      .select({ postId: postVote.postId })
-      .from(postVote)
-      .where(
-        and(
-          eq(postVote.visitorId, actor.visitorId),
-          inArray(postVote.postId, ids),
-        ),
-      )
-    votedSet = new Set(votedRows.map((r) => r.postId))
-  }
+  const votedSet = new Set(votedRows.map((r) => r.postId))
 
-  const commentCountRows = await db
-    .select({
-      postId: comment.postId,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(comment)
-    .where(and(inArray(comment.postId, ids), isNull(comment.deletedAt)))
-    .groupBy(comment.postId)
   const commentCounts = new Map<string, number>()
   for (const r of commentCountRows) commentCounts.set(r.postId, r.count)
 
-  const latestRes = await db.execute(sql`
-    SELECT DISTINCT ON (c.post_id)
-      c.id AS id,
-      c.post_id AS "postId",
-      c.body AS body,
-      c.created_at AS "createdAt",
-      u.id AS "authorId",
-      u.name AS "authorName"
-    FROM comment c
-    LEFT JOIN "user" u ON u.id = c.author_id
-    WHERE c.post_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
-      AND c.deleted_at IS NULL
-    ORDER BY c.post_id, c.created_at DESC
-  `)
   const latestMap = new Map<string, LatestComment>()
   for (const row of latestRes.rows as Array<{
     id: string
@@ -228,45 +237,45 @@ boardsRouter.get(
       })
     }
 
-    const posts = await db
-      .select({
-        id: post.id,
-        title: post.title,
-        description: post.description,
-        status: post.status,
-        pinnedAt: post.pinnedAt,
-        createdAt: post.createdAt,
-        authorName: sql<
-          string | null
-        >`COALESCE(${user.name}, ${visitor.name})`,
-      })
-      .from(post)
-      .leftJoin(user, eq(post.authorId, user.id))
-      .leftJoin(visitor, eq(post.visitorId, visitor.id))
-      .where(
-        and(eq(post.boardId, row.board.id), isNull(post.mergedIntoPostId)),
-      )
-      .orderBy(
-        sql`${post.pinnedAt} DESC NULLS LAST`,
-        desc(post.createdAt),
-      )
+    // Posts list, sibling boards, and the optional actor lookup are all
+    // independent — fan out in parallel instead of sequential awaits.
+    const [posts, workspaceBoards, actor] = await Promise.all([
+      db
+        .select({
+          id: post.id,
+          title: post.title,
+          description: post.description,
+          status: post.status,
+          pinnedAt: post.pinnedAt,
+          createdAt: post.createdAt,
+          authorName: sql<
+            string | null
+          >`COALESCE(${user.name}, ${visitor.name})`,
+        })
+        .from(post)
+        .leftJoin(user, eq(post.authorId, user.id))
+        .leftJoin(visitor, eq(post.visitorId, visitor.id))
+        .where(
+          and(eq(post.boardId, row.board.id), isNull(post.mergedIntoPostId)),
+        )
+        .orderBy(sql`${post.pinnedAt} DESC NULLS LAST`, desc(post.createdAt)),
+      // Sibling public boards in the same workspace — powers the "Boards"
+      // card in the public sidebar so visitors can hop between boards
+      // without going back to a (currently nonexistent) workspace index.
+      db
+        .select({ id: board.id, name: board.name, slug: board.slug })
+        .from(board)
+        .where(
+          and(
+            eq(board.workspaceId, row.workspace.id),
+            eq(board.visibility, "public"),
+          ),
+        )
+        .orderBy(board.createdAt),
+      readOptionalActor(req),
+    ])
 
-    const actor = await readOptionalActor(req)
     const enriched = await enrichPostsWithVotes(posts, actor)
-
-    // Sibling public boards in the same workspace — powers the "Boards" card
-    // in the public sidebar so visitors can hop between boards without going
-    // back to a (currently nonexistent) workspace index page.
-    const workspaceBoards = await db
-      .select({ id: board.id, name: board.name, slug: board.slug })
-      .from(board)
-      .where(
-        and(
-          eq(board.workspaceId, row.workspace.id),
-          eq(board.visibility, "public"),
-        ),
-      )
-      .orderBy(board.createdAt)
 
     res.json({
       workspace: {
