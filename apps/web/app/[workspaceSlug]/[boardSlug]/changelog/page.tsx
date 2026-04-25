@@ -13,7 +13,7 @@ type PublicChangelogResponse = {
 }
 
 type BoardBySlugResponse = {
-  workspace: { id: string; name: string; slug: string }
+  workspace: { id: string; name: string; slug: string; ownerId: string }
   board: { id: string; name: string; slug: string; visibility: string }
 }
 
@@ -52,6 +52,8 @@ export default async function PublicChangelogPage({
       <PublicTopBar
         workspaceName={board.workspace.name}
         workspaceSlug={board.workspace.slug}
+        workspaceId={board.workspace.id}
+        workspaceOwnerId={board.workspace.ownerId}
         boardSlug={board.board.slug}
         boardId={board.board.id}
         activeTab="changelog"

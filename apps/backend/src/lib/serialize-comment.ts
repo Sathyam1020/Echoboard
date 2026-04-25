@@ -2,7 +2,8 @@ export type CommentRow = {
   id: string
   postId: string
   parentId: string | null
-  authorId: string
+  // null when authored by a visitor (visitorId is set instead).
+  authorId: string | null
   body: string
   editedAt: Date | null
   deletedAt: Date | null
@@ -51,8 +52,27 @@ export function serializeComment(
     }
   }
 
+  // Visitor-authored comments have authorId = null — they're never the
+  // workspace owner, so role stays "member". authorName is COALESCE'd from
+  // user.name OR visitor.name in the SQL select, so it's the right label
+  // either way. We synthesise an empty id for visitor authors since the FE
+  // doesn't need the actual visitor.id (no admin-link from comments yet).
   const role: "member" | "owner" =
     workspaceOwnerId && row.authorId === workspaceOwnerId ? "owner" : "member"
+
+  if (!row.authorId && !row.authorName) {
+    return {
+      id: row.id,
+      postId: row.postId,
+      parentId: row.parentId,
+      body: row.body,
+      editedAt: toIso(row.editedAt),
+      deletedAt: toIso(row.deletedAt),
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      author: null,
+    }
+  }
 
   return {
     id: row.id,
@@ -64,8 +84,8 @@ export function serializeComment(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     author: {
-      id: row.authorId,
-      name: row.authorName ?? "Unknown",
+      id: row.authorId ?? "",
+      name: row.authorName ?? "Guest",
       role,
     },
   }

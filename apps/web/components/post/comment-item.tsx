@@ -33,6 +33,7 @@ type Props = {
   node: CommentNode
   depth: number
   postId: string
+  workspaceId?: string
   workspaceOwnerId: string
   onAdd: (c: CommentRow) => void
   onUpdate: (c: CommentRow) => void
@@ -48,6 +49,7 @@ export function CommentItem({
   node,
   depth,
   postId,
+  workspaceId,
   workspaceOwnerId,
   onAdd,
   onUpdate,
@@ -235,6 +237,11 @@ export function CommentItem({
               mode="reply"
               postId={postId}
               parentId={node.id}
+              identity={
+                workspaceId
+                  ? { workspaceId, workspaceOwnerId }
+                  : undefined
+              }
               onSuccess={(c) => {
                 setReplying(false)
                 onAdd(c)
@@ -259,6 +266,7 @@ export function CommentItem({
                   node={child}
                   depth={depth + 1}
                   postId={postId}
+                  workspaceId={workspaceId}
                   workspaceOwnerId={workspaceOwnerId}
                   onAdd={onAdd}
                   onUpdate={onUpdate}

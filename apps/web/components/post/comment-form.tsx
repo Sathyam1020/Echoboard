@@ -3,19 +3,26 @@
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { cn } from "@workspace/ui/lib/utils"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { useState, useTransition } from "react"
 
 import { Avatar } from "@/components/boards/avatar"
+import { IdentityModal } from "@/components/boards/identity-modal"
+import { useVisitorIdentity } from "@/components/boards/use-visitor-identity"
 import { api, ApiError } from "@/lib/api"
 import { authClient } from "@/lib/auth-client"
+import type { VisitorIdentity } from "@/lib/visitor-client"
 
 import type { CommentRow } from "../boards/types"
+
+type IdentityCtx = {
+  workspaceId: string
+  workspaceOwnerId: string
+}
 
 type TopProps = {
   mode: "top"
   postId: string
+  identity?: IdentityCtx
   onSuccess: (comment: CommentRow) => void
 }
 
@@ -23,6 +30,7 @@ type ReplyProps = {
   mode: "reply"
   postId: string
   parentId: string
+  identity?: IdentityCtx
   onSuccess: (comment: CommentRow) => void
   onCancel: () => void
 }
@@ -42,45 +50,76 @@ export function CommentForm(props: Props) {
   const { data: session } = authClient.useSession()
   const authed = Boolean(session)
   const authorName = session?.user?.name ?? null
-  const pathname = usePathname()
-  const signinHref = `/signin?redirectTo=${encodeURIComponent(pathname)}`
+  // Identity context only relevant for top + reply on public surfaces. Edit
+  // never gates on visitor identity (the comment already exists with an owner).
+  const identityCtx =
+    "identity" in props ? props.identity : undefined
+
+  // Always call the hook (rules of hooks) — pass empty workspace ids when
+  // identity context isn't supplied; the hook just sits idle in that case.
+  const visitorIdentity = useVisitorIdentity({
+    workspaceId: identityCtx?.workspaceId ?? "",
+    workspaceOwnerId: identityCtx?.workspaceOwnerId ?? "",
+  })
 
   const initial = props.mode === "edit" ? props.initialBody : ""
   const [body, setBody] = useState(initial)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [identityModalOpen, setIdentityModalOpen] = useState(false)
 
-  const disabled = !authed || isPending || body.trim().length === 0
+  const empty = body.trim().length === 0
+  // Edit mode requires the existing user/visitor identity — no email prompt.
+  // Top + reply on a visitor-aware surface allow guests; otherwise require
+  // an admin session (e.g. dashboard pages without identity ctx).
+  const disabled =
+    isPending ||
+    empty ||
+    (props.mode === "edit" ? !authed : !identityCtx && !authed)
+
+  async function performWrite(): Promise<void> {
+    const text = body.trim()
+    if (props.mode === "edit") {
+      const res = await api.patch<{ comment: CommentRow }>(
+        `/api/comments/${props.commentId}`,
+        { body: text },
+      )
+      props.onSuccess(res.comment)
+      return
+    }
+    if (props.mode === "reply") {
+      const res = await api.post<{ comment: CommentRow }>(
+        `/api/posts/${props.postId}/comments`,
+        { body: text, parentId: props.parentId },
+      )
+      props.onSuccess(res.comment)
+      setBody("")
+      return
+    }
+    const res = await api.post<{ comment: CommentRow }>(
+      `/api/posts/${props.postId}/comments`,
+      { body: text },
+    )
+    props.onSuccess(res.comment)
+    setBody("")
+  }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (disabled) return
-    const text = body.trim()
 
     startTransition(async () => {
       try {
         setError(null)
-        if (props.mode === "edit") {
-          const res = await api.patch<{ comment: CommentRow }>(
-            `/api/comments/${props.commentId}`,
-            { body: text },
-          )
-          props.onSuccess(res.comment)
-        } else if (props.mode === "reply") {
-          const res = await api.post<{ comment: CommentRow }>(
-            `/api/posts/${props.postId}/comments`,
-            { body: text, parentId: props.parentId },
-          )
-          props.onSuccess(res.comment)
-          setBody("")
-        } else {
-          const res = await api.post<{ comment: CommentRow }>(
-            `/api/posts/${props.postId}/comments`,
-            { body: text },
-          )
-          props.onSuccess(res.comment)
-          setBody("")
+        // Public surfaces (identity ctx supplied): gate via visitor identity.
+        if (identityCtx && props.mode !== "edit") {
+          const result = await visitorIdentity.ensure()
+          if (result.kind === "modal") {
+            setIdentityModalOpen(true)
+            return
+          }
         }
+        await performWrite()
       } catch (err) {
         const message =
           err instanceof ApiError ? err.message : "Something went wrong"
@@ -107,22 +146,6 @@ export function CommentForm(props: Props) {
         ? "Edit your comment…"
         : "Share your thoughts…"
 
-  // Signed-out composer on the top-level form: invite sign-in instead of
-  // showing a disabled textarea. Inline forms (reply/edit) never reach this
-  // branch because they only render for authed users.
-  if (!authed && props.mode === "top") {
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-card px-4 py-5">
-        <p className="text-[13px] text-muted-foreground">
-          Sign in to join the conversation.
-        </p>
-        <Button asChild size="sm">
-          <Link href={signinHref}>Sign in</Link>
-        </Button>
-      </div>
-    )
-  }
-
   // Top-level composer gets the full card treatment. Reply/edit forms are
   // compact inline forms rendered inside an existing comment.
   const isTop = props.mode === "top"
@@ -136,16 +159,24 @@ export function CommentForm(props: Props) {
       )}
     >
       <div className={cn("flex gap-3", !isTop && "items-start")}>
-        {isTop && authorName ? (
+        {isTop && (authorName || visitorIdentity.visitor?.name) ? (
           <div className="pt-0.5">
-            <Avatar name={authorName} size={32} />
+            <Avatar
+              name={
+                authorName ?? visitorIdentity.visitor?.name ?? "Guest"
+              }
+              size={32}
+            />
           </div>
         ) : null}
         <Textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder={placeholder}
-          disabled={!authed || isPending}
+          disabled={
+            isPending ||
+            (props.mode === "edit" && !authed)
+          }
           rows={isTop ? 3 : 2}
           className={cn(
             isTop
@@ -178,6 +209,28 @@ export function CommentForm(props: Props) {
           {submitLabel}
         </Button>
       </div>
+      {identityCtx && props.mode !== "edit" ? (
+        <IdentityModal
+          open={identityModalOpen}
+          onOpenChange={setIdentityModalOpen}
+          workspaceId={identityCtx.workspaceId}
+          intent="comment"
+          onIdentified={(v: VisitorIdentity) => {
+            visitorIdentity.setIdentity(v)
+            startTransition(async () => {
+              try {
+                await performWrite()
+              } catch (err) {
+                setError(
+                  err instanceof ApiError
+                    ? err.message
+                    : "Something went wrong",
+                )
+              }
+            })
+          }}
+        />
+      ) : null}
     </form>
   )
 }

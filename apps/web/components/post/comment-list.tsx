@@ -30,10 +30,15 @@ function buildTree(rows: CommentRow[]): CommentNode[] {
 
 export function CommentList({
   postId,
+  workspaceId,
   workspaceOwnerId,
   initialComments,
 }: {
   postId: string
+  // workspaceId is optional so the admin dashboard's CommentList still
+  // works (admin auth is enough there). When provided, public-board flow
+  // gates anonymous comments through the identity modal.
+  workspaceId?: string
   workspaceOwnerId: string
   initialComments: CommentRow[]
 }) {
@@ -61,7 +66,16 @@ export function CommentList({
         </h2>
       </header>
 
-      <CommentForm mode="top" postId={postId} onSuccess={addComment} />
+      <CommentForm
+        mode="top"
+        postId={postId}
+        identity={
+          workspaceId
+            ? { workspaceId, workspaceOwnerId }
+            : undefined
+        }
+        onSuccess={addComment}
+      />
 
       {tree.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-10 text-center">
@@ -80,6 +94,7 @@ export function CommentList({
               node={node}
               depth={0}
               postId={postId}
+              workspaceId={workspaceId}
               workspaceOwnerId={workspaceOwnerId}
               onAdd={addComment}
               onUpdate={updateComment}

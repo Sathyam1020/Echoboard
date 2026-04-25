@@ -42,6 +42,8 @@ export default async function PostPage({
       <PublicTopBar
         workspaceName={data.post.workspace.name}
         workspaceSlug={data.post.workspace.slug}
+        workspaceId={data.post.workspace.id}
+        workspaceOwnerId={data.post.workspace.ownerId}
         boardSlug={data.post.board.slug}
         boardId={data.post.board.id}
       />
@@ -77,6 +79,7 @@ export default async function PostPage({
         <div className="mt-10">
           <CommentList
             postId={data.post.id}
+            workspaceId={data.post.workspace.id}
             workspaceOwnerId={data.post.workspace.ownerId}
             initialComments={data.comments}
           />

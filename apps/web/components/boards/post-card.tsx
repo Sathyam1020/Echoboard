@@ -12,10 +12,14 @@ export function PostCard({
   post,
   workspaceSlug,
   boardSlug,
+  workspaceId,
+  workspaceOwnerId,
 }: {
   post: PostRow
   workspaceSlug: string
   boardSlug: string
+  workspaceId: string
+  workspaceOwnerId: string
 }) {
   const statusKey = isStatusKey(post.status) ? post.status : "review"
   const pinned = Boolean(post.pinnedAt)
@@ -47,6 +51,8 @@ export function PostCard({
           initialCount={post.voteCount}
           initialVoted={post.hasVoted}
           orientation="horizontal"
+          workspaceId={workspaceId}
+          workspaceOwnerId={workspaceOwnerId}
         />
       </div>
 

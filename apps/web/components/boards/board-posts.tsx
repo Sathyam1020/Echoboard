@@ -1,13 +1,8 @@
 "use client"
 
-import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Search } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { useMemo, useState } from "react"
-
-import { authClient } from "@/lib/auth-client"
 
 import { PostList } from "./post-list"
 import { SortPills, type SortOption } from "./sort-pills"
@@ -16,19 +11,19 @@ import type { PostRow } from "./types"
 
 export function BoardPosts({
   boardId,
+  workspaceId,
+  workspaceOwnerId,
   posts,
   workspaceSlug,
   boardSlug,
 }: {
   boardId: string
+  workspaceId: string
+  workspaceOwnerId: string
   posts: PostRow[]
   workspaceSlug: string
   boardSlug: string
 }) {
-  const { data: session } = authClient.useSession()
-  const pathname = usePathname()
-  const signinHref = `/signin?redirectTo=${encodeURIComponent(pathname)}`
-
   const [search, setSearch] = useState("")
   const [sort, setSort] = useState<SortOption>("newest")
 
@@ -74,13 +69,11 @@ export function BoardPosts({
             className="pl-10"
           />
         </div>
-        {session ? (
-          <SubmitPostDialog boardId={boardId} />
-        ) : (
-          <Button asChild>
-            <Link href={signinHref}>Submit</Link>
-          </Button>
-        )}
+        <SubmitPostDialog
+          boardId={boardId}
+          workspaceId={workspaceId}
+          workspaceOwnerId={workspaceOwnerId}
+        />
       </div>
 
       <SortPills value={sort} onChange={setSort} />
@@ -89,6 +82,8 @@ export function BoardPosts({
         posts={filtered}
         workspaceSlug={workspaceSlug}
         boardSlug={boardSlug}
+        workspaceId={workspaceId}
+        workspaceOwnerId={workspaceOwnerId}
       />
     </div>
   )

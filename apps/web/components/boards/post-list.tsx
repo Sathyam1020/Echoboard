@@ -7,10 +7,14 @@ export function PostList({
   posts,
   workspaceSlug,
   boardSlug,
+  workspaceId,
+  workspaceOwnerId,
 }: {
   posts: PostRow[]
   workspaceSlug: string
   boardSlug: string
+  workspaceId: string
+  workspaceOwnerId: string
 }) {
   if (posts.length === 0) {
     return (
@@ -35,6 +39,8 @@ export function PostList({
           post={post}
           workspaceSlug={workspaceSlug}
           boardSlug={boardSlug}
+          workspaceId={workspaceId}
+          workspaceOwnerId={workspaceOwnerId}
         />
       ))}
     </div>

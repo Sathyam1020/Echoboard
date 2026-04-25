@@ -7,7 +7,7 @@ import { PublicRoadmap } from "@/components/roadmap/public-roadmap"
 import { ApiError, serverApi } from "@/lib/api"
 
 type BoardPageData = {
-  workspace: { id: string; name: string; slug: string }
+  workspace: { id: string; name: string; slug: string; ownerId: string }
   board: {
     id: string
     name: string
@@ -41,6 +41,8 @@ export default async function PublicRoadmapPage({
       <PublicTopBar
         workspaceName={data.workspace.name}
         workspaceSlug={data.workspace.slug}
+        workspaceId={data.workspace.id}
+        workspaceOwnerId={data.workspace.ownerId}
         boardSlug={data.board.slug}
         boardId={data.board.id}
         activeTab="roadmap"

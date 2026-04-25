@@ -1,11 +1,7 @@
 "use client"
 
-import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-
-import { authClient } from "@/lib/auth-client"
 
 import { SubmitPostDialog } from "./submit-post-dialog"
 
@@ -14,20 +10,21 @@ type TabId = "feedback" | "roadmap" | "changelog"
 export function PublicTopBar({
   workspaceName,
   workspaceSlug,
+  workspaceId,
+  workspaceOwnerId,
   boardSlug,
   boardId,
   activeTab = "feedback",
 }: {
   workspaceName: string
   workspaceSlug: string
+  workspaceId: string
+  workspaceOwnerId: string
   boardSlug: string
   boardId: string
   activeTab?: TabId
 }) {
-  const { data: session } = authClient.useSession()
-  const pathname = usePathname()
   const initial = (workspaceName.charAt(0) || "E").toUpperCase()
-  const signinHref = `/signin?redirectTo=${encodeURIComponent(pathname)}`
 
   const boardHref = `/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}`
   const tabs: Array<{ id: TabId; label: string; href?: string; soon?: boolean }> = [
@@ -78,21 +75,11 @@ export function PublicTopBar({
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          {session ? (
-            <SubmitPostDialog boardId={boardId} />
-          ) : (
-            <>
-              <Link
-                href={signinHref}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Log in
-              </Link>
-              <Button asChild size="sm">
-                <Link href={signinHref}>Submit feedback</Link>
-              </Button>
-            </>
-          )}
+          <SubmitPostDialog
+            boardId={boardId}
+            workspaceId={workspaceId}
+            workspaceOwnerId={workspaceOwnerId}
+          />
         </div>
       </div>
     </div>

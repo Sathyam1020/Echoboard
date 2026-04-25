@@ -70,17 +70,31 @@ for (const entry of journal.entries) {
       // neon-http doesn't accept raw SQL via the template tag; use the fn form.
       await sql.query(stmt)
     } catch (err) {
-      // Tolerate "already exists" errors so reruns after a partial apply
-      // (which happens when drizzle-kit's pg driver half-runs and exits)
-      // complete the remaining work instead of halting.
-      // 42P07 = duplicate_table / duplicate_index, 42710 = duplicate_object (constraint)
+      // Tolerate "already exists" + "does not exist" so reruns after a partial
+      // apply (which happens when drizzle-kit's pg driver half-runs and exits,
+      // or when a later statement in the file fails) complete the remaining
+      // work instead of halting.
+      // 42P07 = duplicate_table/index, 42710 = duplicate_object (constraint)
+      // 42704 = undefined_object (e.g. DROP CONSTRAINT that already ran)
+      // 42P01 = undefined_table, 42703 = undefined_column
       const alreadyExists =
         /already exists/i.test(err.message) ||
+        /multiple primary keys/i.test(err.message) ||
         err.code === "42P07" ||
-        err.code === "42710"
+        err.code === "42710" ||
+        err.code === "42P16"
+      const doesNotExist =
+        /does not exist/i.test(err.message) ||
+        err.code === "42704" ||
+        err.code === "42P01" ||
+        err.code === "42703"
 
       if (alreadyExists) {
         console.log(`  ↷ skip (already exists): ${stmt.split("\n")[0].slice(0, 80)}…`)
+        continue
+      }
+      if (doesNotExist) {
+        console.log(`  ↷ skip (already removed): ${stmt.split("\n")[0].slice(0, 80)}…`)
         continue
       }
 

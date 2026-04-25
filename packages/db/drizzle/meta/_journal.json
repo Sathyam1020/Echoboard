@@ -57,6 +57,13 @@
       "when": 1777067600000,
       "tag": "0007_revert_changelog_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777117458096,
+      "tag": "0008_eminent_morlun",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import {
   post,
   postVote,
   user,
+  visitor,
   workspace,
 } from "@workspace/db/schema"
 import { fromNodeHeaders } from "better-auth/node"
@@ -13,7 +14,7 @@ import { Router, type Request, type Response } from "express"
 import { z } from "zod"
 
 import { AppError } from "../middleware/error-handler.js"
-import { requireAuth } from "../middleware/require-auth.js"
+import { requireAnyAuth } from "../middleware/require-any-auth.js"
 
 type PostListRow = {
   id: string
@@ -42,7 +43,7 @@ type EnrichedPost = Omit<PostListRow, "pinnedAt"> & {
 
 async function enrichPostsWithVotes(
   posts: PostListRow[],
-  userId: string | null,
+  actor: OptionalActor,
 ): Promise<EnrichedPost[]> {
   if (posts.length === 0) return []
   const ids = posts.map((p) => p.id)
@@ -59,11 +60,27 @@ async function enrichPostsWithVotes(
   for (const r of countRows) counts.set(r.postId, r.count)
 
   let votedSet = new Set<string>()
-  if (userId) {
+  if (actor.kind === "user") {
     const votedRows = await db
       .select({ postId: postVote.postId })
       .from(postVote)
-      .where(and(eq(postVote.userId, userId), inArray(postVote.postId, ids)))
+      .where(
+        and(
+          eq(postVote.userId, actor.userId),
+          inArray(postVote.postId, ids),
+        ),
+      )
+    votedSet = new Set(votedRows.map((r) => r.postId))
+  } else if (actor.kind === "visitor") {
+    const votedRows = await db
+      .select({ postId: postVote.postId })
+      .from(postVote)
+      .where(
+        and(
+          eq(postVote.visitorId, actor.visitorId),
+          inArray(postVote.postId, ids),
+        ),
+      )
     votedSet = new Set(votedRows.map((r) => r.postId))
   }
 
@@ -135,6 +152,31 @@ export async function readOptionalUserId(
   return session?.user?.id ?? null
 }
 
+export type OptionalActor =
+  | { kind: "visitor"; visitorId: string }
+  | { kind: "user"; userId: string }
+  | { kind: "anonymous" }
+
+// Used by GET endpoints that surface "did this actor vote" without forcing
+// auth. Visitor cookie wins over admin session — explicit visitor lane.
+export async function readOptionalActor(req: Request): Promise<OptionalActor> {
+  // Lazy imports to avoid a circular dep with the visitor middleware.
+  const { readVisitorToken } = await import(
+    "../middleware/require-visitor.js"
+  )
+  const { loadVisitorBySession } = await import(
+    "../lib/visitor-session.js"
+  )
+  const token = readVisitorToken(req)
+  if (token) {
+    const s = await loadVisitorBySession(token)
+    if (s) return { kind: "visitor", visitorId: s.visitor.id }
+  }
+  const userId = await readOptionalUserId(req)
+  if (userId) return { kind: "user", userId }
+  return { kind: "anonymous" }
+}
+
 export const boardsRouter: Router = Router()
 
 const createPostBody = z.object({
@@ -194,10 +236,13 @@ boardsRouter.get(
         status: post.status,
         pinnedAt: post.pinnedAt,
         createdAt: post.createdAt,
-        authorName: user.name,
+        authorName: sql<
+          string | null
+        >`COALESCE(${user.name}, ${visitor.name})`,
       })
       .from(post)
       .leftJoin(user, eq(post.authorId, user.id))
+      .leftJoin(visitor, eq(post.visitorId, visitor.id))
       .where(
         and(eq(post.boardId, row.board.id), isNull(post.mergedIntoPostId)),
       )
@@ -206,14 +251,15 @@ boardsRouter.get(
         desc(post.createdAt),
       )
 
-    const userId = await readOptionalUserId(req)
-    const enriched = await enrichPostsWithVotes(posts, userId)
+    const actor = await readOptionalActor(req)
+    const enriched = await enrichPostsWithVotes(posts, actor)
 
     res.json({
       workspace: {
         id: row.workspace.id,
         name: row.workspace.name,
         slug: row.workspace.slug,
+        ownerId: row.workspace.ownerId,
       },
       board: row.board,
       posts: enriched,
@@ -248,18 +294,21 @@ boardsRouter.get(
         status: post.status,
         pinnedAt: post.pinnedAt,
         createdAt: post.createdAt,
-        authorName: user.name,
+        authorName: sql<
+          string | null
+        >`COALESCE(${user.name}, ${visitor.name})`,
       })
       .from(post)
       .leftJoin(user, eq(post.authorId, user.id))
+      .leftJoin(visitor, eq(post.visitorId, visitor.id))
       .where(and(eq(post.boardId, b.id), isNull(post.mergedIntoPostId)))
       .orderBy(
         sql`${post.pinnedAt} DESC NULLS LAST`,
         desc(post.createdAt),
       )
 
-    const userId = await readOptionalUserId(req)
-    const enriched = await enrichPostsWithVotes(posts, userId)
+    const actor = await readOptionalActor(req)
+    const enriched = await enrichPostsWithVotes(posts, actor)
 
     res.json({ posts: enriched })
   },
@@ -267,7 +316,7 @@ boardsRouter.get(
 
 boardsRouter.post(
   "/:boardId/posts",
-  requireAuth,
+  requireAnyAuth,
   async (req: Request, res: Response) => {
     const parsed = createPostBody.safeParse(req.body)
     if (!parsed.success) {
@@ -292,17 +341,38 @@ boardsRouter.post(
       })
     }
 
-    const session = res.locals.session!
     const id = crypto.randomUUID()
 
-    await db.insert(post).values({
-      id,
-      boardId: b.id,
-      authorId: session.user.id,
-      title: parsed.data.title,
-      description: parsed.data.description,
-      status: "review",
-    })
+    // Branch on actor type. requireAnyAuth puts exactly one of these on
+    // res.locals; visitors must belong to the same workspace as the board
+    // they're posting on.
+    const v = res.locals.visitor
+    if (v) {
+      if (v.workspaceId !== b.workspaceId) {
+        throw new AppError("Visitor does not belong to this workspace", {
+          status: 403,
+          code: "WORKSPACE_MISMATCH",
+        })
+      }
+      await db.insert(post).values({
+        id,
+        boardId: b.id,
+        visitorId: v.id,
+        title: parsed.data.title,
+        description: parsed.data.description,
+        status: "review",
+      })
+    } else {
+      const session = res.locals.session!
+      await db.insert(post).values({
+        id,
+        boardId: b.id,
+        authorId: session.user.id,
+        title: parsed.data.title,
+        description: parsed.data.description,
+        status: "review",
+      })
+    }
 
     const [row] = await db
       .select({
@@ -311,10 +381,13 @@ boardsRouter.post(
         description: post.description,
         status: post.status,
         createdAt: post.createdAt,
-        authorName: user.name,
+        authorName: sql<
+          string | null
+        >`COALESCE(${user.name}, ${visitor.name})`,
       })
       .from(post)
       .leftJoin(user, eq(post.authorId, user.id))
+      .leftJoin(visitor, eq(post.visitorId, visitor.id))
       .where(eq(post.id, id))
 
     res.status(201).json({ post: row })

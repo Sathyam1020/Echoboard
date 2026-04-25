@@ -32,9 +32,12 @@ async function loadCommentWithOwner(commentId: string) {
 
 function assertCanMutate(
   userId: string,
-  authorId: string,
+  authorId: string | null,
   workspaceOwnerId: string,
 ): void {
+  // authorId is null for visitor-authored comments — those can only be
+  // mutated by the workspace owner here. Visitor self-edit lands in v2
+  // alongside visitor auth on /api/comments/*.
   if (userId !== authorId && userId !== workspaceOwnerId) {
     throw new AppError("You cannot modify this comment", {
       status: 403,

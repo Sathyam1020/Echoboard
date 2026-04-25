@@ -29,6 +29,8 @@ export function PostHeader({ post }: { post: PostDetail }) {
             initialCount={post.voteCount}
             initialVoted={post.hasVoted}
             orientation="horizontal"
+            workspaceId={post.workspace.id}
+            workspaceOwnerId={post.workspace.ownerId}
           />
         </div>
 

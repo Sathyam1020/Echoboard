@@ -5,8 +5,10 @@ import {
   post,
   postVote,
   user,
+  visitor,
   workspace,
 } from "@workspace/db/schema"
+import { randomUUID } from "node:crypto"
 import { Router, type Request, type Response } from "express"
 import { z } from "zod"
 
@@ -15,6 +17,7 @@ import {
   type CommentRow,
 } from "../lib/serialize-comment.js"
 import { AppError } from "../middleware/error-handler.js"
+import { requireAnyAuth } from "../middleware/require-any-auth.js"
 import { requireAuth } from "../middleware/require-auth.js"
 import { readOptionalUserId } from "./boards.js"
 
@@ -67,12 +70,13 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
       post: post,
       board: board,
       workspace: workspace,
-      authorName: user.name,
+      authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
     })
     .from(post)
     .innerJoin(board, eq(post.boardId, board.id))
     .innerJoin(workspace, eq(board.workspaceId, workspace.id))
     .leftJoin(user, eq(post.authorId, user.id))
+    .leftJoin(visitor, eq(post.visitorId, visitor.id))
     .where(eq(post.id, postId))
 
   if (!row) {
@@ -82,8 +86,13 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
     })
   }
 
+  // viewerIsOwner is admin-only — visitor identity never makes you an admin.
   const userId = await readOptionalUserId(req)
   const viewerIsOwner = userId !== null && userId === row.workspace.ownerId
+  // Resolve the actor (visitor cookie wins over admin session) so we can
+  // tell the FE whether the current viewer has voted on this post.
+  const { readOptionalActor } = await import("./boards.js")
+  const actor = await readOptionalActor(req)
 
   // If this post was merged into another, attach a `mergedInto` pointer so the
   // frontend can redirect. The source row keeps existing, but has no votes/
@@ -106,34 +115,48 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
     (voteCountRes.rows as Array<{ count: number }>)[0]?.count ?? 0
 
   let hasVoted = false
-  if (userId) {
+  if (actor.kind === "user") {
     const [voted] = await db
       .select({ postId: postVote.postId })
       .from(postVote)
       .where(
-        and(eq(postVote.postId, postId), eq(postVote.userId, userId)),
+        and(eq(postVote.postId, postId), eq(postVote.userId, actor.userId)),
+      )
+    hasVoted = Boolean(voted)
+  } else if (actor.kind === "visitor") {
+    const [voted] = await db
+      .select({ postId: postVote.postId })
+      .from(postVote)
+      .where(
+        and(
+          eq(postVote.postId, postId),
+          eq(postVote.visitorId, actor.visitorId),
+        ),
       )
     hasVoted = Boolean(voted)
   }
 
   // Voter list is admin-only. Top 20 most recent voters with names for the
-  // sidebar. Paginate later if anyone hits the ceiling.
+  // sidebar. Voter could be either a user (admin) or a visitor (end-user).
   let voters: Array<{ id: string; name: string; votedAt: string }> | null = null
   if (viewerIsOwner) {
     const voterRows = await db
       .select({
-        id: user.id,
-        name: user.name,
+        userId: user.id,
+        userName: user.name,
+        visitorId: visitor.id,
+        visitorName: visitor.name,
         votedAt: postVote.createdAt,
       })
       .from(postVote)
       .leftJoin(user, eq(postVote.userId, user.id))
+      .leftJoin(visitor, eq(postVote.visitorId, visitor.id))
       .where(eq(postVote.postId, postId))
       .orderBy(desc(postVote.createdAt))
       .limit(20)
     voters = voterRows.map((v) => ({
-      id: v.id ?? "",
-      name: v.name ?? "Unknown",
+      id: v.userId ?? v.visitorId ?? "",
+      name: v.userName ?? v.visitorName ?? "Unknown",
       votedAt: v.votedAt.toISOString(),
     }))
   }
@@ -149,10 +172,11 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
       deletedAt: comment.deletedAt,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
-      authorName: user.name,
+      authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
     })
     .from(comment)
     .leftJoin(user, eq(comment.authorId, user.id))
+    .leftJoin(visitor, eq(comment.visitorId, visitor.id))
     .where(eq(comment.postId, postId))
     .orderBy(asc(comment.createdAt))
 
@@ -493,7 +517,7 @@ const createCommentBody = z.object({
 
 postsRouter.post(
   "/:postId/comments",
-  requireAuth,
+  requireAnyAuth,
   async (req: Request, res: Response) => {
     const postId = req.params.postId
     if (typeof postId !== "string" || !postId) {
@@ -514,6 +538,7 @@ postsRouter.post(
     const [row] = await db
       .select({
         post: post,
+        workspaceId: workspace.id,
         workspaceOwnerId: workspace.ownerId,
       })
       .from(post)
@@ -548,16 +573,32 @@ postsRouter.post(
       }
     }
 
-    const session = res.locals.session!
-    const id = crypto.randomUUID()
-
-    await db.insert(comment).values({
-      id,
-      postId,
-      authorId: session.user.id,
-      parentId,
-      body: parsed.data.body,
-    })
+    const id = randomUUID()
+    const v = res.locals.visitor
+    if (v) {
+      if (v.workspaceId !== row.workspaceId) {
+        throw new AppError("Visitor does not belong to this workspace", {
+          status: 403,
+          code: "WORKSPACE_MISMATCH",
+        })
+      }
+      await db.insert(comment).values({
+        id,
+        postId,
+        visitorId: v.id,
+        parentId,
+        body: parsed.data.body,
+      })
+    } else {
+      const session = res.locals.session!
+      await db.insert(comment).values({
+        id,
+        postId,
+        authorId: session.user.id,
+        parentId,
+        body: parsed.data.body,
+      })
+    }
 
     const [inserted] = await db
       .select({
@@ -570,10 +611,11 @@ postsRouter.post(
         deletedAt: comment.deletedAt,
         createdAt: comment.createdAt,
         updatedAt: comment.updatedAt,
-        authorName: user.name,
+        authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
       })
       .from(comment)
       .leftJoin(user, eq(comment.authorId, user.id))
+      .leftJoin(visitor, eq(comment.visitorId, visitor.id))
       .where(eq(comment.id, id))
 
     if (!inserted) {
@@ -589,10 +631,12 @@ postsRouter.post(
   },
 )
 
-// voting routes
+// Toggle vote — accepts either admin session OR visitor token. We resolve
+// the existing vote first (avoids fighting partial-unique-index ON CONFLICT
+// targeting), then DELETE-or-INSERT.
 postsRouter.post(
   "/:postId/vote",
-  requireAuth,
+  requireAnyAuth,
   async (req: Request, res: Response) => {
     const postId = req.params.postId
     if (typeof postId !== "string" || !postId) {
@@ -602,30 +646,54 @@ postsRouter.post(
       })
     }
 
-    const [p] = await db.select().from(post).where(eq(post.id, postId))
-    if (!p) {
+    const [postRow] = await db
+      .select({ id: post.id, boardId: post.boardId })
+      .from(post)
+      .where(eq(post.id, postId))
+    if (!postRow) {
       throw new AppError("Post not found", {
         status: 404,
         code: "POST_NOT_FOUND",
       })
     }
 
-    const userId = res.locals.session!.user.id
+    const v = res.locals.visitor
+    let where
+    if (v) {
+      // Workspace match — visitor must vote within their own workspace.
+      const [b] = await db
+        .select({ workspaceId: board.workspaceId })
+        .from(board)
+        .where(eq(board.id, postRow.boardId))
+      if (!b || b.workspaceId !== v.workspaceId) {
+        throw new AppError("Visitor does not belong to this workspace", {
+          status: 403,
+          code: "WORKSPACE_MISMATCH",
+        })
+      }
+      where = and(eq(postVote.postId, postId), eq(postVote.visitorId, v.id))
+    } else {
+      const userId = res.locals.session!.user.id
+      where = and(eq(postVote.postId, postId), eq(postVote.userId, userId))
+    }
 
-    const insertRes = await db.execute(sql`
-      INSERT INTO post_vote (post_id, user_id)
-      VALUES (${postId}, ${userId})
-      ON CONFLICT (post_id, user_id) DO NOTHING
-      RETURNING 1
-    `)
+    const [existing] = await db
+      .select({ id: postVote.id })
+      .from(postVote)
+      .where(where)
 
-    const wasInserted = (insertRes.rowCount ?? 0) > 0
-
-    if (!wasInserted) {
-      await db.execute(sql`
-        DELETE FROM post_vote
-        WHERE post_id = ${postId} AND user_id = ${userId}
-      `)
+    let hasVoted: boolean
+    if (existing) {
+      await db.delete(postVote).where(eq(postVote.id, existing.id))
+      hasVoted = false
+    } else {
+      await db.insert(postVote).values({
+        id: randomUUID(),
+        postId,
+        userId: v ? null : res.locals.session!.user.id,
+        visitorId: v ? v.id : null,
+      })
+      hasVoted = true
     }
 
     const countRes = await db.execute(sql`
@@ -634,7 +702,7 @@ postsRouter.post(
     const row = (countRes.rows as Array<{ count: number }>)[0]
     const voteCount = row?.count ?? 0
 
-    res.json({ hasVoted: wasInserted, voteCount })
-  }
+    res.json({ hasVoted, voteCount })
+  },
 )
 
