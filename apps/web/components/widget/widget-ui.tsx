@@ -112,7 +112,13 @@ export function WidgetUI({
     <div className="flex h-svh flex-col bg-background">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
+        <a
+          href={`/${encodeURIComponent(config.workspaceSlug)}/${encodeURIComponent(config.boardSlug)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="-m-1 flex min-w-0 items-center gap-2 rounded-md p-1 transition-colors hover:bg-muted"
+          title="Open the full board"
+        >
           <div
             className="flex size-6 shrink-0 items-center justify-center rounded-md text-[12px] font-medium text-primary-foreground"
             style={{ backgroundColor: config.color ?? "var(--primary)" }}
@@ -127,7 +133,7 @@ export function WidgetUI({
               {config.boardName}
             </div>
           </div>
-        </div>
+        </a>
         {!preview ? (
           <button
             type="button"

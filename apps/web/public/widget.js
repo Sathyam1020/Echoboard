@@ -18,6 +18,20 @@
   if (typeof window === "undefined") return
   if (window.echoboard && window.echoboard.__loaded) return
 
+  // The widget panel is itself an iframe pointed at /widget/<boardId>. If
+  // this script ever gets loaded inside that iframe (e.g. a customer drops
+  // the <script> tag in a root layout that wraps every route), it would
+  // mount a recursive floating button inside the open panel. Bail.
+  try {
+    if (
+      window.top !== window.self &&
+      window.location &&
+      /^\/widget\//.test(window.location.pathname)
+    ) {
+      return
+    }
+  } catch (e) { /* cross-origin window.top access — not our iframe, continue */ }
+
   function findSelfScript() {
     if (document.currentScript) return document.currentScript
     var scripts = document.getElementsByTagName("script")

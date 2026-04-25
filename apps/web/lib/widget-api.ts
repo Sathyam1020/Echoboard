@@ -5,8 +5,12 @@
 // That token reaches the iframe via postMessage; the iframe uses it as
 // `Authorization: Bearer <token>` on every API call.
 //
-// Falling back to `credentials: include` is intentional for the in-app
-// preview (same-origin to echoboard.io — cookie auth works fine there).
+// We always send `credentials: "omit"`. The widget is cross-origin by
+// design (and 3rd-party cookies don't survive Safari ITP / Chrome's
+// 3rd-party cookie phase-out anyway), so it must rely entirely on Bearer.
+// Sending `credentials: "include"` against the widget CORS config (which
+// has `credentials: false` to keep CSRF surface tight) gets blocked by
+// the browser even before the request lands.
 
 import { ApiError } from "./api"
 
@@ -51,10 +55,7 @@ function buildInit(method: string, body?: unknown): RequestInit {
   return {
     method,
     headers,
-    // With Bearer, omit cookies so we don't accidentally fall back to a
-    // stale visitor cookie from a previous session. Without Bearer, ride
-    // cookies — supports the same-origin preview iframe.
-    credentials: bearerToken ? "omit" : "include",
+    credentials: "omit",
     body: body !== undefined ? JSON.stringify(body) : undefined,
   }
 }

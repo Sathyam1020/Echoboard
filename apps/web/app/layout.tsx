@@ -3,7 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google"
 
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@workspace/ui/lib/utils";
+import { cn } from "@workspace/ui/lib/utils"
 
 // Match cal.com: Inter for body text, JetBrains Mono for data (counts, MRR,
 // dates). Variables keep the same names so existing styles (`font-sans`,
@@ -28,10 +28,10 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       className={cn(
-        "scroll-smooth scroll-pt-16 antialiased",
+        "scroll-pt-16 scroll-smooth antialiased",
         fontSans.variable,
         fontMono.variable,
-        "font-sans",
+        "font-sans"
       )}
     >
       <body>

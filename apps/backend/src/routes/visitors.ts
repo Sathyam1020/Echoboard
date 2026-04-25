@@ -24,15 +24,18 @@ export const visitorsRouter: Router = Router()
 
 // Per-IP throttle for the public-write surfaces. Generous for legit users
 // trying to fix a typo and resubmit, tight enough to deter scripted spam.
+// Loosened heavily in dev — dogfooding the widget against your own dashboard
+// burns through 30/hour in a single afternoon of submit-button mashing.
+const isProd = process.env.NODE_ENV === "production"
 const guestRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 30,
+  limit: isProd ? 30 : 10_000,
   standardHeaders: "draft-7",
   legacyHeaders: false,
 })
 const identifyRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 60,
+  limit: isProd ? 60 : 10_000,
   standardHeaders: "draft-7",
   legacyHeaders: false,
 })
