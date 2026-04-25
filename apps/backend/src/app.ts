@@ -23,12 +23,20 @@ export function createApp(): Express {
   app.use(helmet())
 
   // Public widget surfaces — embedded on any 3rd-party SaaS site, so they
-  // need permissive CORS. credentials:false because cookies don't survive
-  // 3rd-party iframe contexts in modern browsers anyway; the widget uses
-  // Bearer tokens for cross-origin calls.
+  // need permissive CORS. Two callers hit these endpoints:
+  //   1. The widget iframe on a customer's site — uses Bearer tokens (the
+  //      visitor token from /identify or /guest), no cookies. Works because
+  //      `credentials: true` ALLOWS but doesn't REQUIRE credentials.
+  //   2. The public board on echoboard.io — uses cookie-based visitor
+  //      sessions. Needs `credentials: true` so the browser will both send
+  //      the visitor cookie and store the Set-Cookie reply (otherwise both
+  //      get silently dropped on cross-origin requests, e.g. localhost:3000
+  //      → localhost:4000 in dev).
+  // origin:true echoes the request origin (not literal `*`), which is the
+  // form `Allow-Credentials: true` requires.
   const widgetCors = cors({
     origin: true,
-    credentials: false,
+    credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
