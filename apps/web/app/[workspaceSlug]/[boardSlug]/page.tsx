@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation"
 
 import { BoardPosts } from "@/components/boards/board-posts"
-import type { PostRow } from "@/components/boards/types"
+import { BoardsListCard } from "@/components/boards/boards-list-card"
 import { PublicFooter } from "@/components/boards/public-footer"
+import { PublicSidebar } from "@/components/boards/public-sidebar"
 import { PublicTopBar } from "@/components/boards/public-top-bar"
+import type { PostRow } from "@/components/boards/types"
 import { ApiError, serverApi } from "@/lib/api"
 
 type BoardPageData = {
@@ -15,6 +17,7 @@ type BoardPageData = {
     visibility: string
   }
   posts: PostRow[]
+  workspaceBoards: { id: string; name: string; slug: string }[]
 }
 
 export default async function BoardPage({
@@ -48,27 +51,39 @@ export default async function BoardPage({
         activeTab="feedback"
       />
 
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <header className="mb-7">
-          <h1 className="text-2xl font-medium -tracking-[0.02em]">
-            {data.board.name === "Feature Requests"
-              ? "What should we build next?"
-              : data.board.name}
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Vote on ideas, submit your own, or comment on what&apos;s important
-            to you.
-          </p>
-        </header>
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <div className="flex flex-col-reverse gap-8 lg:flex-row">
+          <PublicSidebar className="lg:w-60 lg:flex-shrink-0">
+            <BoardsListCard
+              boards={data.workspaceBoards}
+              workspaceSlug={data.workspace.slug}
+              activeBoardSlug={data.board.slug}
+            />
+          </PublicSidebar>
 
-        <BoardPosts
-          boardId={data.board.id}
-          workspaceId={data.workspace.id}
-          workspaceOwnerId={data.workspace.ownerId}
-          posts={data.posts}
-          workspaceSlug={workspaceSlug}
-          boardSlug={boardSlug}
-        />
+          <main className="min-w-0 flex-1">
+            <header className="mb-7">
+              <h1 className="text-2xl font-medium -tracking-[0.02em]">
+                {data.board.name === "Feature Requests"
+                  ? "What should we build next?"
+                  : data.board.name}
+              </h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Vote on ideas, submit your own, or comment on what&apos;s
+                important to you.
+              </p>
+            </header>
+
+            <BoardPosts
+              boardId={data.board.id}
+              workspaceId={data.workspace.id}
+              workspaceOwnerId={data.workspace.ownerId}
+              posts={data.posts}
+              workspaceSlug={workspaceSlug}
+              boardSlug={boardSlug}
+            />
+          </main>
+        </div>
       </div>
 
       <PublicFooter />

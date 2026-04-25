@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation"
 
 import { PublicFooter } from "@/components/boards/public-footer"
+import { PublicSidebar } from "@/components/boards/public-sidebar"
 import { PublicTopBar } from "@/components/boards/public-top-bar"
+import { ProductActivityCard } from "@/components/changelog/product-activity-card"
 import { PublicChangelog } from "@/components/changelog/public-changelog"
 import type { PublicChangelogEntry } from "@/components/changelog/types"
 import { ApiError, serverApi } from "@/lib/api"
@@ -59,18 +61,28 @@ export default async function PublicChangelogPage({
         activeTab="changelog"
       />
 
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <header className="mb-7">
-          <h1 className="text-2xl font-medium -tracking-[0.02em]">Changelog</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            What&apos;s new — recent updates and ships.
-          </p>
-        </header>
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <div className="flex flex-col-reverse gap-8 lg:flex-row">
+          <PublicSidebar className="lg:w-60 lg:flex-shrink-0">
+            <ProductActivityCard entries={data.entries} />
+          </PublicSidebar>
 
-        <PublicChangelog
-          entries={data.entries}
-          workspaceSlug={data.workspace.slug}
-        />
+          <main className="min-w-0 flex-1">
+            <header className="mb-7">
+              <h1 className="text-2xl font-medium -tracking-[0.02em]">
+                Changelog
+              </h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                What&apos;s new — recent updates and ships.
+              </p>
+            </header>
+
+            <PublicChangelog
+              entries={data.entries}
+              workspaceSlug={data.workspace.slug}
+            />
+          </main>
+        </div>
       </div>
 
       <PublicFooter />

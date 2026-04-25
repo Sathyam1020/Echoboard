@@ -254,6 +254,20 @@ boardsRouter.get(
     const actor = await readOptionalActor(req)
     const enriched = await enrichPostsWithVotes(posts, actor)
 
+    // Sibling public boards in the same workspace — powers the "Boards" card
+    // in the public sidebar so visitors can hop between boards without going
+    // back to a (currently nonexistent) workspace index page.
+    const workspaceBoards = await db
+      .select({ id: board.id, name: board.name, slug: board.slug })
+      .from(board)
+      .where(
+        and(
+          eq(board.workspaceId, row.workspace.id),
+          eq(board.visibility, "public"),
+        ),
+      )
+      .orderBy(board.createdAt)
+
     res.json({
       workspace: {
         id: row.workspace.id,
@@ -263,6 +277,7 @@ boardsRouter.get(
       },
       board: row.board,
       posts: enriched,
+      workspaceBoards,
     })
   },
 )
