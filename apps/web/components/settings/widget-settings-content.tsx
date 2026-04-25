@@ -4,7 +4,7 @@ import { useState } from "react"
 
 import { SettingsSection } from "@/components/settings/section-card"
 import { WidgetCustomizerForm } from "@/components/settings/widget-customizer-form"
-import { WidgetHmacSection } from "@/components/settings/widget-hmac-section"
+import { WidgetIdentifyGuide } from "@/components/settings/widget-identify-guide"
 import { WidgetInstallSnippet } from "@/components/settings/widget-install-snippet"
 import { useDashboardBoardsQuery } from "@/hooks/use-dashboard"
 import { useWidgetConfigQuery } from "@/hooks/use-widget-config"
@@ -57,10 +57,10 @@ export function WidgetSettingsContent({ origin }: { origin: string }) {
         </SettingsSection>
 
         <SettingsSection
-          title="Identify your users"
-          description="Skip the email prompt for users who are already signed into your product. Pair with HMAC for impersonation-proof security."
+          title="Identify your visitors"
+          description="Three ways your users can identify on the widget. Pick the one that fits your stack."
         >
-          <WidgetHmacSection
+          <WidgetIdentifyGuide
             initialSecret={settingsQuery.data.settings.identifySecretKey}
             initialRequireSigned={settingsQuery.data.settings.requireSignedIdentify}
           />

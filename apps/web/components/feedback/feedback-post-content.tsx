@@ -39,15 +39,22 @@ export function FeedbackPostContent({ postId }: { postId: string }) {
       </div>
 
       <div className="grid grid-cols-1 gap-8 px-4 py-6 sm:px-8 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-5">
           <PostHeader post={data.post} />
 
-          <StatusPicker
-            postId={data.post.id}
-            initialStatus={data.post.status}
-          />
-
-          <hr className="border-border" />
+          {/* StatusPicker wrapped in its own card so it reads as a discrete
+              "change status" affordance, not floating pills. */}
+          <section className="overflow-hidden rounded-xl border border-border bg-card">
+            <header className="border-b border-border px-4 py-3">
+              <h3 className="text-[13px] font-medium">Change status</h3>
+            </header>
+            <div className="px-4 py-3.5">
+              <StatusPicker
+                postId={data.post.id}
+                initialStatus={data.post.status}
+              />
+            </div>
+          </section>
 
           <CommentList
             postId={data.post.id}
@@ -56,7 +63,11 @@ export function FeedbackPostContent({ postId }: { postId: string }) {
           />
         </div>
 
-        <aside className="flex flex-col gap-4">
+        {/* Right sidebar sticks in place; only the comments column scrolls.
+            `self-start` prevents the grid row from stretching the aside,
+            which would break sticky behavior visually. `top-4` clears the
+            page padding. */}
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
           <VoterListCard voters={voters} totalVotes={data.post.voteCount} />
           <PostStatsCard
             voteCount={data.post.voteCount}

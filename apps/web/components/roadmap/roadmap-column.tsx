@@ -17,8 +17,10 @@ export function RoadmapColumn({
 }) {
   return (
     <section
-      className={`flex min-h-[200px] flex-col gap-3 rounded-lg border bg-card p-3 transition-colors ${
-        highlighted ? "border-foreground/30 bg-muted/50" : "border-border"
+      className={`flex min-h-[200px] flex-col gap-3 rounded-lg border p-3 transition-colors ${
+        highlighted
+          ? "border-foreground/30 bg-muted/70"
+          : "border-border bg-muted/40"
       }`}
     >
       <header className="flex items-center gap-2 px-1">

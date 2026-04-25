@@ -204,51 +204,58 @@ export function ChangelogEditor({
       {/* Editor body */}
       <div className="grid grid-cols-1 gap-6 px-4 py-6 sm:px-8 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="flex min-w-0 flex-col gap-3">
-          {previewMode ? (
-            <div className="py-2">
-              <div className="font-mono text-[12px] text-muted-foreground">
-                {entry?.publishedAt
-                  ? new Date(entry.publishedAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "Draft"}
+          {/* Wrap the writing surface (title + toolbar + body) in a card so
+              it reads as a discrete authoring area against the tinted page
+              bg, instead of three loose elements floating on the page. */}
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            {previewMode ? (
+              <div className="px-5 py-5 sm:px-7">
+                <div className="font-mono text-[12px] text-muted-foreground">
+                  {entry?.publishedAt
+                    ? new Date(entry.publishedAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "Draft"}
+                </div>
+                <h1 className="mt-2 text-2xl font-medium -tracking-[0.02em] sm:text-[32px]">
+                  {displayTitle}
+                </h1>
+                <div className="mt-5">
+                  {body.trim().length > 0 ? (
+                    <MarkdownBody>{body}</MarkdownBody>
+                  ) : (
+                    <p className="text-[13px] text-muted-foreground">
+                      Nothing to preview yet.
+                    </p>
+                  )}
+                </div>
               </div>
-              <h1 className="mt-2 text-2xl font-medium -tracking-[0.02em] sm:text-[32px]">
-                {displayTitle}
-              </h1>
-              <div className="mt-5">
-                {body.trim().length > 0 ? (
-                  <MarkdownBody>{body}</MarkdownBody>
-                ) : (
-                  <p className="text-[13px] text-muted-foreground">
-                    Nothing to preview yet.
-                  </p>
-                )}
+            ) : (
+              <div className="flex flex-col">
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="What did you ship?"
+                  maxLength={200}
+                  className="w-full border-0 bg-transparent px-5 pt-5 pb-2 text-2xl font-medium leading-tight -tracking-[0.02em] text-foreground placeholder:text-muted-foreground/60 focus:outline-none sm:px-7 sm:text-[32px]"
+                />
+                <div className="border-y border-border-soft bg-muted/30 px-3 py-1.5">
+                  <EditorToolbar onAction={onToolbarAction} />
+                </div>
+                <Textarea
+                  ref={textareaRef}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={16}
+                  maxLength={20_000}
+                  placeholder="Markdown is supported — **bold**, _italic_, `code`, [links](https://)…"
+                  className="min-h-[360px] resize-y rounded-none border-0 bg-card px-5 py-4 font-mono text-[13px] leading-[1.7] focus-visible:ring-0 sm:px-7"
+                />
               </div>
-            </div>
-          ) : (
-            <>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="What did you ship?"
-                maxLength={200}
-                className="w-full border-0 bg-transparent px-0 py-2 text-2xl font-medium leading-tight -tracking-[0.02em] text-foreground placeholder:text-muted-foreground/60 focus:outline-none sm:text-[32px]"
-              />
-              <EditorToolbar onAction={onToolbarAction} />
-              <Textarea
-                ref={textareaRef}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={16}
-                maxLength={20_000}
-                placeholder="Markdown is supported — **bold**, _italic_, `code`, [links](https://)…"
-                className="min-h-[360px] resize-y rounded-md bg-card p-4 font-mono text-[13px] leading-[1.7]"
-              />
-            </>
-          )}
+            )}
+          </div>
 
           {error ? (
             <Alert variant="destructive">
