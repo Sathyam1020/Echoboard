@@ -291,6 +291,107 @@ boardsRouter.get(
   },
 )
 
+// GET /api/boards/by-workspace/:workspaceSlug — aggregate "All feedback"
+// view across every public board in the workspace. Mirrors the by-slug
+// response shape but each post carries its source board info so the UI
+// can render a board badge per row. Used by the workspace-root page
+// (`/[workspaceSlug]`) which is the home of the "All feedback" tab.
+boardsRouter.get(
+  "/by-workspace/:workspaceSlug",
+  async (req: Request, res: Response) => {
+    const workspaceSlug = req.params.workspaceSlug
+    if (typeof workspaceSlug !== "string" || !workspaceSlug) {
+      throw new AppError("Invalid slug", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+
+    const [ws] = await db
+      .select()
+      .from(workspace)
+      .where(eq(workspace.slug, workspaceSlug))
+    if (!ws) {
+      throw new AppError("Workspace not found", {
+        status: 404,
+        code: "WORKSPACE_NOT_FOUND",
+      })
+    }
+
+    const [postRows, workspaceBoards, actor] = await Promise.all([
+      db
+        .select({
+          id: post.id,
+          title: post.title,
+          description: post.description,
+          status: post.status,
+          pinnedAt: post.pinnedAt,
+          createdAt: post.createdAt,
+          authorName: sql<
+            string | null
+          >`COALESCE(${user.name}, ${visitor.name})`,
+          boardId: board.id,
+          boardName: board.name,
+          boardSlug: board.slug,
+        })
+        .from(post)
+        .innerJoin(board, eq(post.boardId, board.id))
+        .leftJoin(user, eq(post.authorId, user.id))
+        .leftJoin(visitor, eq(post.visitorId, visitor.id))
+        .where(
+          and(
+            eq(board.workspaceId, ws.id),
+            eq(board.visibility, "public"),
+            isNull(post.mergedIntoPostId),
+          ),
+        )
+        .orderBy(sql`${post.pinnedAt} DESC NULLS LAST`, desc(post.createdAt)),
+      db
+        .select({ id: board.id, name: board.name, slug: board.slug })
+        .from(board)
+        .where(
+          and(eq(board.workspaceId, ws.id), eq(board.visibility, "public")),
+        )
+        .orderBy(board.createdAt),
+      readOptionalActor(req),
+    ])
+
+    // enrichPostsWithVotes only needs the columns it consumes — strip
+    // the board fields before passing in, then re-attach after.
+    const baseRows: PostListRow[] = postRows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      status: r.status,
+      pinnedAt: r.pinnedAt,
+      createdAt: r.createdAt,
+      authorName: r.authorName,
+    }))
+    const enriched = await enrichPostsWithVotes(baseRows, actor)
+    const boardById = new Map(
+      postRows.map((r) => [
+        r.id,
+        { id: r.boardId, name: r.boardName, slug: r.boardSlug },
+      ]),
+    )
+    const enrichedWithBoard = enriched.map((p) => ({
+      ...p,
+      board: boardById.get(p.id) ?? null,
+    }))
+
+    res.json({
+      workspace: {
+        id: ws.id,
+        name: ws.name,
+        slug: ws.slug,
+        ownerId: ws.ownerId,
+      },
+      posts: enrichedWithBoard,
+      workspaceBoards,
+    })
+  },
+)
+
 boardsRouter.get(
   "/:boardId/posts",
   async (req: Request, res: Response) => {

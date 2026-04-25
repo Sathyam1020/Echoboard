@@ -24,8 +24,11 @@ export function PostCard({
   const statusKey = isStatusKey(post.status) ? post.status : "review"
   const pinned = Boolean(post.pinnedAt)
 
+  // In the all-feedback view, posts carry their own board — link to that
+  // board's URL rather than the (irrelevant) prop slug.
+  const linkBoardSlug = post.board?.slug ?? boardSlug
   const href = `/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(
-    boardSlug,
+    linkBoardSlug,
   )}/${encodeURIComponent(post.id)}`
 
   return (
@@ -89,9 +92,18 @@ export function PostCard({
         </div>
       ) : null}
 
-      {/* Meta row — status, author, date, comment count */}
+      {/* Meta row — status, board (if cross-board view), author, date, count */}
       <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-muted-foreground">
         <StatusBadge status={statusKey} />
+        {post.board ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="size-1.5 rounded-full bg-emerald-500"
+              aria-hidden
+            />
+            <span className="text-foreground/80">{post.board.name}</span>
+          </span>
+        ) : null}
         {post.authorName ? (
           <span className="inline-flex items-center gap-1.5">
             <Avatar name={post.authorName} size={18} />

@@ -12,6 +12,8 @@ export const queryKeys = {
     bySlug: (workspaceSlug: string, boardSlug: string) =>
       ["boards", "by-slug", workspaceSlug, boardSlug] as const,
     posts: (boardId: string) => ["boards", boardId, "posts"] as const,
+    allFeedback: (workspaceSlug: string) =>
+      ["boards", "all-feedback", workspaceSlug] as const,
   },
 
   posts: {

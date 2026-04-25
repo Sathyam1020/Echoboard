@@ -15,6 +15,7 @@ export function PublicTopBar({
   boardSlug,
   boardId,
   activeTab = "feedback",
+  hideSubmitDialog = false,
 }: {
   workspaceName: string
   workspaceSlug: string
@@ -23,12 +24,20 @@ export function PublicTopBar({
   boardSlug: string
   boardId: string
   activeTab?: TabId
+  /** Submit-post dialog requires a single target board. The all-feedback
+   *  view has no implicit target, so hide it there. */
+  hideSubmitDialog?: boolean
 }) {
   const initial = (workspaceName.charAt(0) || "E").toUpperCase()
 
+  // The Feedback tab is now the workspace's "All feedback" landing —
+  // a per-board feed view is just a filter applied via the sidebar.
+  // Roadmap and Changelog stay per-board because their content is
+  // board-scoped (status pipelines + per-board release notes).
+  const allFeedbackHref = `/${encodeURIComponent(workspaceSlug)}`
   const boardHref = `/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}`
   const tabs: Array<{ id: TabId; label: string; href?: string; soon?: boolean }> = [
-    { id: "feedback", label: "Feedback", href: boardHref },
+    { id: "feedback", label: "Feedback", href: allFeedbackHref },
     { id: "roadmap", label: "Roadmap", href: `${boardHref}/roadmap` },
     { id: "changelog", label: "Changelog", href: `${boardHref}/changelog` },
   ]
@@ -42,7 +51,7 @@ export function PublicTopBar({
             squeeze the nav. */}
         <div className="flex flex-wrap items-center gap-3 pt-3 sm:flex-nowrap sm:gap-4 sm:py-3">
           <Link
-            href={boardHref}
+            href={allFeedbackHref}
             className="flex min-w-0 items-center gap-2.5"
           >
             <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md bg-foreground font-mono text-[12px] font-medium text-background">
@@ -85,11 +94,13 @@ export function PublicTopBar({
           </nav>
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-3 sm:order-3">
-            <SubmitPostDialog
-              boardId={boardId}
-              workspaceId={workspaceId}
-              workspaceOwnerId={workspaceOwnerId}
-            />
+            {hideSubmitDialog ? null : (
+              <SubmitPostDialog
+                boardId={boardId}
+                workspaceId={workspaceId}
+                workspaceOwnerId={workspaceOwnerId}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -14,6 +14,7 @@ import {
   changelogEntry,
   changelogPost,
   post,
+  user,
   workspace,
 } from "@workspace/db/schema"
 import { Router, type Request, type Response } from "express"
@@ -142,9 +143,17 @@ changelogRouter.get(
       .orderBy(board.createdAt)
       .limit(1)
 
-    const entries = await db
-      .select()
+    // Pull author identity alongside the entries so the public detail
+    // page can show "Written by …" without a second round-trip per
+    // entry. Workspace-owner check is on the consuming side.
+    const entryRows = await db
+      .select({
+        entry: changelogEntry,
+        authorName: user.name,
+        authorImage: user.image,
+      })
       .from(changelogEntry)
+      .leftJoin(user, eq(changelogEntry.authorId, user.id))
       .where(
         and(
           eq(changelogEntry.workspaceId, ws.id),
@@ -153,7 +162,7 @@ changelogRouter.get(
       )
       .orderBy(desc(changelogEntry.publishedAt))
 
-    const ids = entries.map((e) => e.id)
+    const ids = entryRows.map((r) => r.entry.id)
     const linkedMap = new Map<
       string,
       Array<{ id: string; title: string; boardSlug: string }>
@@ -180,9 +189,12 @@ changelogRouter.get(
     res.json({
       workspace: { id: ws.id, name: ws.name, slug: ws.slug },
       firstBoard: firstBoard ?? null,
-      entries: entries.map((e) => ({
-        ...serializeEntry(e),
-        linkedPosts: linkedMap.get(e.id) ?? [],
+      entries: entryRows.map((r) => ({
+        ...serializeEntry(r.entry),
+        author: r.authorName
+          ? { name: r.authorName, image: r.authorImage ?? null }
+          : null,
+        linkedPosts: linkedMap.get(r.entry.id) ?? [],
       })),
     })
   },

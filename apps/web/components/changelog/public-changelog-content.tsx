@@ -54,6 +54,7 @@ export function PublicChangelogContent({
             <PublicChangelog
               entries={changelog.data.entries}
               workspaceSlug={changelog.data.workspace.slug}
+              boardSlug={board.data.board.slug}
             />
           </main>
         </div>

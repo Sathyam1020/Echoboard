@@ -27,3 +27,25 @@ export async function fetchPostsByBoard(boardId: string): Promise<{ posts: PostR
   )
   return data
 }
+
+/** Posts in the all-feedback view carry their source board so the row
+ *  can render a board badge. The per-board endpoints return `PostRow`
+ *  without a board (the board is implicit from the URL). */
+export type PostRowWithBoard = PostRow & {
+  board: { id: string; name: string; slug: string } | null
+}
+
+export type AllFeedbackResponse = {
+  workspace: { id: string; name: string; slug: string; ownerId: string }
+  posts: PostRowWithBoard[]
+  workspaceBoards: { id: string; name: string; slug: string }[]
+}
+
+export async function fetchAllFeedback(
+  workspaceSlug: string,
+): Promise<AllFeedbackResponse> {
+  const { data } = await httpClient.get<AllFeedbackResponse>(
+    `/api/boards/by-workspace/${encodeURIComponent(workspaceSlug)}`,
+  )
+  return data
+}

@@ -35,6 +35,9 @@ export type PostRow = {
   hasVoted: boolean
   commentCount: number
   latestComment: LatestComment | null
+  /** Only present in the all-feedback aggregate view. Lets PostCard
+   *  link to the right board and render a "from <board>" badge. */
+  board?: { id: string; name: string; slug: string } | null
 }
 
 export type Voter = {
