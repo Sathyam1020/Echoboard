@@ -28,12 +28,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const { boards } = await fetchDashboardBoardsSSR()
   if (boards.length === 0) redirect("/onboarding/board")
 
+  // Pin the floating widget bubble to the active workspace's first
+  // board. Was hardcoded — that broke the moment a user created a
+  // second workspace and switched to it.
+  const widgetBoardId = boards[0]!.boardId
+
   return (
     <>
       {children}
       <script
         src="http://localhost:3000/widget.js"
-        data-board-id="26b6823b-157d-4eb7-b2c3-0a37c889a9c7"
+        data-board-id={widgetBoardId}
         async
       ></script>
     </>
