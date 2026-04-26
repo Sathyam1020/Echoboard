@@ -56,12 +56,15 @@ export function Hero() {
           </p>
           {/* Deliberate one-off: the hero headline is the only semibold on the site. */}
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-            Know what to build next — and who&apos;s asking for it
+            Customer feedback that doesn&apos;t charge per user
           </h1>
           <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Collect feature requests, let users vote, and see the real revenue
-            behind every request. Free for unlimited users. No tracked-user
-            pricing, ever.
+            Collect feature requests, run a public roadmap, ship a changelog —
+            free for unlimited users. Flat{" "}
+            <span className="font-mono font-medium tabular-nums text-foreground">
+              $29/mo
+            </span>{" "}
+            when you outgrow free.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button asChild size="lg" className="px-5 shadow-none">
@@ -77,7 +80,7 @@ export function Hero() {
             </Button>
           </div>
           <p className="mt-4 text-xs text-muted-foreground/60">
-            Free forever for 1 board · No credit card · Set up in{" "}
+            Free forever · No credit card · Set up in{" "}
             <span className="font-mono tabular-nums">2</span> minutes
           </p>
         </FadeIn>

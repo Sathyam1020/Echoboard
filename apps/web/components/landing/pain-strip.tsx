@@ -4,19 +4,19 @@ import { FadeIn } from "./fade-in"
 
 const PAINS = [
   {
-    pain: "Canny charges you more when your users engage more",
+    pain: "Canny charges more as your users engage more",
     solution:
-      "Unlimited users on every plan. Your bill never grows with engagement.",
+      "Free for unlimited users. Your bill never grows with engagement.",
   },
   {
-    pain: "50 votes from free users outweigh 3 enterprise accounts",
+    pain: "50 free-tier votes outweigh 3 enterprise customers",
     solution:
       "See the MRR behind every vote. Prioritize by revenue, not noise.",
   },
   {
-    pain: "Feedback scattered across Slack, email, and support tickets",
+    pain: "Feedback scattered across Slack, email, and tickets",
     solution:
-      "One board your whole team and all your users share as the single source of truth.",
+      "Board, roadmap, and changelog in one tool. One source of truth.",
   },
 ] as const
 

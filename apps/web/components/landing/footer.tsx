@@ -1,11 +1,12 @@
 import { type ComponentProps } from "react"
 
+// Anchor-only links — landing intentionally doesn't cross-link to the
+// marketing route surface yet (alternatives, blog, use cases). User
+// will wire those in after reviewing the revamp.
 const FOOTER_LINKS = [
-  { href: "#features", label: "Product" },
+  { href: "#features", label: "Why switch" },
+  { href: "#demo", label: "Product" },
   { href: "#pricing", label: "Pricing" },
-  { href: "#demo", label: "Roadmap" },
-  { href: "#changelog", label: "Changelog" },
-  { href: "#", label: "Blog" },
 ] as const
 
 export function Footer() {
