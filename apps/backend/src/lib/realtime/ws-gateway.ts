@@ -211,12 +211,25 @@ async function authenticateUpgrade(
     // Fall through to visitor path.
   }
 
-  // Fall back to the visitor cookie.
-  const token = readVisitorTokenFromRaw(req)
+  // Visitor: cookie OR ?token= query param. The widget runs cross-
+  // origin from any host SaaS site so cookies don't survive ITP /
+  // 3rd-party cookie blocking; the loader gets a Bearer-style token
+  // via /api/visitors/identify and we accept it here as a query
+  // param (browsers can't set custom headers on WebSocket).
+  const token = readVisitorTokenFromRaw(req) ?? readVisitorTokenFromQuery(req)
   if (!token) return null
   const visitorSession = await loadVisitorBySession(token)
   if (!visitorSession) return null
   return { kind: "visitor", visitorId: visitorSession.visitor.id }
+}
+
+function readVisitorTokenFromQuery(req: IncomingMessage): string | null {
+  const url = req.url ?? ""
+  const q = url.indexOf("?")
+  if (q < 0) return null
+  const params = new URLSearchParams(url.slice(q + 1))
+  const t = params.get("token")
+  return t && t.length > 0 ? t : null
 }
 
 function readVisitorTokenFromRaw(req: IncomingMessage): string | null {

@@ -46,6 +46,7 @@ export function WidgetSettingsContent({ origin }: { origin: string }) {
               position: widgetCfg.data.position,
               buttonText: widgetCfg.data.buttonText,
               showBranding: widgetCfg.data.showBranding,
+              supportEnabled: widgetCfg.data.supportEnabled,
             }}
             onSaved={() => {
               // Bump the iframe key so the preview reloads with the new

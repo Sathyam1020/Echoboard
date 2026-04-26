@@ -48,6 +48,7 @@ export default async function WidgetIframePage({
         buttonText: config.buttonText,
         showBranding: config.showBranding,
         requireSignedIdentify: config.requireSignedIdentify,
+        supportEnabled: config.supportEnabled,
       }}
       initialPosts={posts}
       preview={isPreview}

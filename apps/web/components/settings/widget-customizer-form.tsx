@@ -16,6 +16,7 @@ export type WidgetConfig = {
   position: "bottom-right" | "bottom-left"
   buttonText: string
   showBranding: boolean
+  supportEnabled: boolean
 }
 
 export function WidgetCustomizerForm({
@@ -31,6 +32,7 @@ export function WidgetCustomizerForm({
   const [position, setPosition] = useState(initial.position)
   const [buttonText, setButtonText] = useState(initial.buttonText)
   const [showBranding, setShowBranding] = useState(initial.showBranding)
+  const [supportEnabled, setSupportEnabled] = useState(initial.supportEnabled)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -50,12 +52,14 @@ export function WidgetCustomizerForm({
           position,
           buttonText: buttonText.trim(),
           showBranding,
+          supportEnabled,
         })
         onSaved({
           color: trimmed === "" ? null : trimmed.startsWith("#") ? trimmed : `#${trimmed}`,
           position,
           buttonText: buttonText.trim(),
           showBranding,
+          supportEnabled,
         })
       } catch (err) {
         setError(
@@ -145,6 +149,20 @@ export function WidgetCustomizerForm({
           </p>
         </div>
         <Switch checked={showBranding} onCheckedChange={setShowBranding} />
+      </div>
+
+      <div className="flex items-center justify-between rounded-md border border-border-soft px-3 py-2.5">
+        <div>
+          <div className="text-[13px] font-medium">Enable support chat</div>
+          <p className="text-[11.5px] text-muted-foreground">
+            Adds a "Support" tab to the widget. Visitors can message your team
+            directly; replies appear in /dashboard/support.
+          </p>
+        </div>
+        <Switch
+          checked={supportEnabled}
+          onCheckedChange={setSupportEnabled}
+        />
       </div>
 
       {error ? (

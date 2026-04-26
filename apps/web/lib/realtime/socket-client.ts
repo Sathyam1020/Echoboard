@@ -54,19 +54,37 @@ function setState(next: ConnectionState): void {
   for (const l of stateListeners) l(next)
 }
 
+// Bearer token for cross-origin widget contexts where browser cookies
+// aren't sent on WebSocket upgrade. The admin dashboard uses cookies
+// and leaves this null. The widget calls setSocketBearer once on
+// identity setup; rotations force a reconnect with the new credential.
+let bearerToken: string | null = null
+
+export function setSocketBearer(token: string | null): void {
+  if (bearerToken === token) return
+  bearerToken = token
+  if (socket) socket.close()
+}
+
 function resolveWsUrl(): string {
   // Prefer NEXT_PUBLIC_WS_URL when set; fall back to deriving from the
   // backend HTTP URL (http → ws, https → wss). Both are exposed at
   // build time as Next.js public env vars.
   const explicit = process.env.NEXT_PUBLIC_WS_URL
-  if (explicit) return `${explicit.replace(/\/$/, "")}/ws`
-  const backend = process.env.NEXT_PUBLIC_BACKEND_URL
-  if (!backend) {
-    throw new Error(
-      "NEXT_PUBLIC_BACKEND_URL or NEXT_PUBLIC_WS_URL must be set to open a WebSocket.",
-    )
-  }
-  return `${backend.replace(/^http/, "ws").replace(/\/$/, "")}/ws`
+  const base = explicit
+    ? `${explicit.replace(/\/$/, "")}/ws`
+    : (() => {
+        const backend = process.env.NEXT_PUBLIC_BACKEND_URL
+        if (!backend) {
+          throw new Error(
+            "NEXT_PUBLIC_BACKEND_URL or NEXT_PUBLIC_WS_URL must be set to open a WebSocket.",
+          )
+        }
+        return `${backend.replace(/^http/, "ws").replace(/\/$/, "")}/ws`
+      })()
+  return bearerToken
+    ? `${base}?token=${encodeURIComponent(bearerToken)}`
+    : base
 }
 
 function open(): void {

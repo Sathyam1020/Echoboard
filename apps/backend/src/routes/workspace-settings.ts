@@ -165,6 +165,7 @@ widgetConfigPublicRouter.get(
       position: row.board.widgetPosition,
       buttonText: row.board.widgetButtonText,
       showBranding: row.board.widgetShowBranding,
+      supportEnabled: row.board.supportEnabled,
     })
   },
 )
@@ -175,13 +176,15 @@ const widgetConfigBody = z
     position: z.enum(["bottom-right", "bottom-left"]).optional(),
     buttonText: z.string().trim().min(1).max(24).optional(),
     showBranding: z.boolean().optional(),
+    supportEnabled: z.boolean().optional(),
   })
   .refine(
     (v) =>
       v.color !== undefined ||
       v.position !== undefined ||
       v.buttonText !== undefined ||
-      v.showBranding !== undefined,
+      v.showBranding !== undefined ||
+      v.supportEnabled !== undefined,
     { message: "Provide at least one field" },
   )
 
@@ -238,6 +241,8 @@ widgetConfigAdminRouter.patch(
       patch.widgetButtonText = parsed.data.buttonText
     if (parsed.data.showBranding !== undefined)
       patch.widgetShowBranding = parsed.data.showBranding
+    if (parsed.data.supportEnabled !== undefined)
+      patch.supportEnabled = parsed.data.supportEnabled
 
     const [updated] = await db
       .update(board)
@@ -251,6 +256,7 @@ widgetConfigAdminRouter.patch(
         widgetPosition: updated!.widgetPosition,
         widgetButtonText: updated!.widgetButtonText,
         widgetShowBranding: updated!.widgetShowBranding,
+        supportEnabled: updated!.supportEnabled,
       },
     })
   },

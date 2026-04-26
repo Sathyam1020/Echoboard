@@ -1060,33 +1060,6 @@ supportRouter.get(
   },
 )
 
-// ── Public widget config (does this board's workspace have support on?) ─
-
-supportRouter.get(
-  "/widget-config",
-  async (req: Request, res: Response) => {
-    const boardId =
-      typeof req.query.boardId === "string" ? req.query.boardId : null
-    if (!boardId) {
-      throw new AppError("boardId required", {
-        status: 400,
-        code: "VALIDATION_ERROR",
-      })
-    }
-    const [b] = await db
-      .select({ id: board.id, supportEnabled: board.supportEnabled })
-      .from(board)
-      .where(eq(board.id, boardId))
-    if (!b) {
-      throw new AppError("Board not found", {
-        status: 404,
-        code: "BOARD_NOT_FOUND",
-      })
-    }
-    res.json({ supportEnabled: b.supportEnabled })
-  },
-)
-
 // ── Helpers ───────────────────────────────────────────────────────
 
 async function loadAuthorJoin(

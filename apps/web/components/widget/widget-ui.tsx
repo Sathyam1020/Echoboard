@@ -20,8 +20,10 @@ import {
   ROADMAP_COLUMNS,
   groupPostsForRoadmap,
 } from "@/components/roadmap/group-posts"
+import { WidgetSupportTab } from "@/components/widget/widget-support-tab"
 import { ApiError } from "@/lib/http/api-error"
 import { setWidgetBearer, widgetHttp } from "@/lib/http/widget-axios"
+import { setSocketBearer } from "@/lib/realtime/socket-client"
 import type { VisitorIdentity } from "@/services/visitors"
 import type { PostRow } from "@/components/boards/types"
 
@@ -36,9 +38,10 @@ type WidgetConfig = {
   buttonText: string
   showBranding: boolean
   requireSignedIdentify: boolean
+  supportEnabled: boolean
 }
 
-type Tab = "submit" | "board" | "roadmap"
+type Tab = "submit" | "board" | "roadmap" | "support"
 
 export function WidgetUI({
   config,
@@ -66,6 +69,9 @@ export function WidgetUI({
       if (e.data.type === "echoboard:visitor-token") {
         const token = e.data.token as string | null
         setWidgetBearer(token)
+        // Mirror onto the WS singleton — without it the support-tab
+        // socket can't authenticate from a cross-origin iframe.
+        setSocketBearer(token)
         if (token) {
           // Pull the identified visitor — confirms the token + populates
           // the "submitting as …" line.
@@ -148,10 +154,23 @@ export function WidgetUI({
 
       {/* Tabs */}
       <nav className="flex gap-1 border-b border-border px-2">
-        {(["submit", "board", "roadmap"] as const).map((t) => {
+        {(
+          [
+            "submit",
+            "board",
+            "roadmap",
+            ...(config.supportEnabled ? (["support"] as const) : []),
+          ] as Tab[]
+        ).map((t) => {
           const active = tab === t
           const label =
-            t === "submit" ? "Submit" : t === "board" ? "Board" : "Roadmap"
+            t === "submit"
+              ? "Submit"
+              : t === "board"
+                ? "Board"
+                : t === "roadmap"
+                  ? "Roadmap"
+                  : "Support"
           return (
             <button
               key={t}
@@ -171,26 +190,39 @@ export function WidgetUI({
       </nav>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
         {tab === "submit" ? (
-          <SubmitTab
-            config={config}
+          <div className="flex-1 overflow-y-auto">
+            <SubmitTab
+              config={config}
+              visitor={visitor}
+              onIdentified={setVisitor}
+              onPosted={(p) => {
+                setPosts((prev) => [p, ...prev])
+                setTab("board")
+              }}
+            />
+          </div>
+        ) : tab === "board" ? (
+          <div className="flex-1 overflow-y-auto">
+            <BoardTab
+              posts={posts}
+              visitor={visitor}
+              workspaceSlug={config.workspaceSlug}
+              boardSlug={config.boardSlug}
+            />
+          </div>
+        ) : tab === "roadmap" ? (
+          <div className="flex-1 overflow-y-auto">
+            <RoadmapTab posts={posts} />
+          </div>
+        ) : (
+          <WidgetSupportTab
+            workspaceId={config.workspaceId}
+            workspaceSlug={config.workspaceSlug}
             visitor={visitor}
             onIdentified={setVisitor}
-            onPosted={(p) => {
-              setPosts((prev) => [p, ...prev])
-              setTab("board")
-            }}
           />
-        ) : tab === "board" ? (
-          <BoardTab
-            posts={posts}
-            visitor={visitor}
-            workspaceSlug={config.workspaceSlug}
-            boardSlug={config.boardSlug}
-          />
-        ) : (
-          <RoadmapTab posts={posts} />
         )}
       </div>
 
