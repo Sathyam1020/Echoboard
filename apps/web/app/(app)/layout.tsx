@@ -28,19 +28,23 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const { boards } = await fetchDashboardBoardsSSR()
   if (boards.length === 0) redirect("/onboarding/board")
 
-  // Pin the floating widget bubble to the active workspace's first
-  // board. Was hardcoded — that broke the moment a user created a
-  // second workspace and switched to it.
-  const widgetBoardId = boards[0]!.boardId
+  // Dogfood widget — embedded in every admin's dashboard so visiting
+  // signed-in users hit the SAME workspace's widget (the dogfood owner's),
+  // not their own. Their support messages land in the dogfood workspace's
+  // /dashboard/support inbox. Configured via NEXT_PUBLIC_DOGFOOD_BOARD_ID;
+  // unset → no widget rendered.
+  const dogfoodBoardId = process.env.NEXT_PUBLIC_DOGFOOD_BOARD_ID
 
   return (
     <>
       {children}
-      <script
-        src="http://localhost:3000/widget.js"
-        data-board-id={widgetBoardId}
-        async
-      ></script>
+      {dogfoodBoardId ? (
+        <script
+          src="http://localhost:3000/widget.js"
+          data-board-id={dogfoodBoardId}
+          async
+        ></script>
+      ) : null}
     </>
   )
 }

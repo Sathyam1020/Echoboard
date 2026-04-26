@@ -34,9 +34,9 @@ export function Composer({
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Cmd/Ctrl + Enter sends. Plain Enter inserts a newline (matches the
-    // mental model of every other chat composer).
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    // Enter sends; Shift+Enter inserts a newline. Matches WhatsApp /
+    // iMessage / Slack desktop — what most chat users expect.
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       void submit()
     }

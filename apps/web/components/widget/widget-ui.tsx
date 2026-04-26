@@ -286,6 +286,10 @@ function SubmitTab({
             name: name.trim() || undefined,
           })
           setWidgetBearer(guestRes.data.visitorToken)
+          // Mirror the bearer onto the WS singleton too — without it the
+          // Support tab's realtime subscription stays unauthenticated and
+          // the user has to switch tabs to refetch over REST.
+          setSocketBearer(guestRes.data.visitorToken)
           v = guestRes.data.visitor
           onIdentified(v)
           // Tell the loader so it can persist the token and reuse it on

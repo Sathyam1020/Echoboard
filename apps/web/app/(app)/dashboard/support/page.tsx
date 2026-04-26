@@ -7,7 +7,7 @@ import { makeQueryClient } from "@/lib/query/query-client"
 import { fetchSupportConversationsSSR } from "@/services/support.server"
 
 export const metadata: Metadata = {
-  title: "Support",
+  title: "Inbox",
   robots: { index: false, follow: false },
 }
 

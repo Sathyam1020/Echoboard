@@ -1,6 +1,6 @@
 "use client"
 
-import { MessagesSquare } from "lucide-react"
+import { Inbox } from "lucide-react"
 import Link from "next/link"
 
 import {
@@ -25,10 +25,10 @@ export function SupportNavItem({ isActive }: { isActive: boolean }) {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive} tooltip="Support">
+      <SidebarMenuButton asChild isActive={isActive} tooltip="Inbox">
         <Link href="/dashboard/support">
-          <MessagesSquare className="size-4 shrink-0" aria-hidden />
-          <span>Support</span>
+          <Inbox className="size-4 shrink-0" aria-hidden />
+          <span>Inbox</span>
         </Link>
       </SidebarMenuButton>
       {unread > 0 ? (

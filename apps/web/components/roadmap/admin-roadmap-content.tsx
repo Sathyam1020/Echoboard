@@ -11,10 +11,17 @@ import { AdminRoadmap } from "@/components/roadmap/admin-roadmap"
 import { useBoardRoadmapQuery } from "@/hooks/queries/use-board-roadmap"
 import { useDashboardBoardsQuery } from "@/hooks/use-dashboard"
 
-export function AdminRoadmapContent() {
+export function AdminRoadmapContent({
+  initialBoardId,
+}: {
+  // Mirror of FeedbackPageContent — keeps the roadmap anchored on the
+  // same board the user picked anywhere else (URL param OR
+  // active_board_id cookie OR boards[0]).
+  initialBoardId?: string
+}) {
   const boardsQuery = useDashboardBoardsQuery()
   const searchParams = useSearchParams()
-  const boardIdParam = searchParams.get("boardId")
+  const boardIdParam = searchParams.get("boardId") ?? initialBoardId ?? null
 
   const boards = boardsQuery.data?.boards ?? []
   const activeBoard =
@@ -68,7 +75,15 @@ export function AdminRoadmapContent() {
       />
 
       <div className="px-4 py-6 sm:px-8">
-        <AdminRoadmap posts={roadmap.data.posts} />
+        {/* Key on activeBoard.boardId — AdminRoadmap stores posts in
+            local useState seeded from initialPosts. Without remounting
+            on board change the state stays stuck on the previous
+            board's posts even though the prop changes. Re-keying
+            forces a fresh mount so the new initialPosts take effect. */}
+        <AdminRoadmap
+          key={activeBoard.boardId}
+          posts={roadmap.data.posts}
+        />
       </div>
     </AdminPageShell>
   )

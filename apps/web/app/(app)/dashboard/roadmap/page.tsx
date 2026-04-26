@@ -1,4 +1,5 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { AdminRoadmapContent } from "@/components/roadmap/admin-roadmap-content"
@@ -24,8 +25,15 @@ export default async function RoadmapPage({
   if (boards.boards.length === 0) redirect("/onboarding/board")
   queryClient.setQueryData(queryKeys.dashboard.boards(), boards)
 
+  // URL param > active_board_id cookie > boards[0]. Same precedence as
+  // the feedback page so both surfaces stay anchored to whichever board
+  // the user last picked in either switcher.
+  const cookieStore = await cookies()
+  const cookieBoardId = cookieStore.get("active_board_id")?.value ?? null
   const activeBoard =
-    boards.boards.find((b) => b.boardId === boardIdParam) ?? boards.boards[0]!
+    boards.boards.find((b) => b.boardId === boardIdParam) ??
+    boards.boards.find((b) => b.boardId === cookieBoardId) ??
+    boards.boards[0]!
 
   const roadmap = await fetchBoardRoadmapSSR({
     workspaceSlug: activeBoard.workspaceSlug,
@@ -41,7 +49,7 @@ export default async function RoadmapPage({
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <AdminRoadmapContent />
+      <AdminRoadmapContent initialBoardId={activeBoard.boardId} />
     </HydrationBoundary>
   )
 }

@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
-import { ChevronDown } from "lucide-react"
+import { ArrowLeft, ChevronDown } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 
 import { authClient } from "@/lib/auth-client"
@@ -31,8 +31,11 @@ import type { ConversationStatus } from "./types"
 
 export function ConversationThread({
   conversationId,
+  onBack,
 }: {
   conversationId: string
+  // Mobile-only "back to list" affordance — desktop hides it via md:hidden.
+  onBack?: () => void
 }) {
   const convQuery = useSupportConversationQuery(conversationId)
   const msgsQuery = useSupportMessagesInfiniteQuery(conversationId)
@@ -95,9 +98,19 @@ export function ConversationThread({
   const myUserId = session?.user.id ?? ""
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex flex-1 min-h-0 flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border bg-card px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-border bg-card px-3 py-3 sm:px-5">
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to conversations"
+            className="-ml-1 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+          </button>
+        ) : null}
         <SupportAvatar
           name={conv.customer.name}
           image={conv.customer.image}
@@ -131,11 +144,15 @@ export function ConversationThread({
         onScroll={onScroll}
         className="flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto px-5 py-4"
       >
-        {/* Older-messages sentinel at the TOP — scrolling up loads more. */}
+        {/* Older-messages sentinel at the TOP — scrolling up loads more.
+            Empty endLabel hides the "You've reached the end." copy when
+            we hit the start of the conversation (it's the start, not
+            the end). */}
         <InfiniteScrollSentinel
           onLoadMore={() => msgsQuery.fetchNextPage()}
           hasNextPage={!!msgsQuery.hasNextPage}
           isFetchingNextPage={msgsQuery.isFetchingNextPage}
+          endLabel=""
         />
         {messages.length === 0 && !msgsQuery.isPending ? (
           <div className="my-auto text-center text-[12.5px] text-muted-foreground">

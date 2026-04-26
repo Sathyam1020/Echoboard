@@ -645,6 +645,16 @@ supportRouter.post(
           unreadAdmin: updated.unreadAdmin,
           unreadCustomer: updated.unreadCustomer,
           status: updated.status,
+          // Include the latest message preview so the conversation
+          // list row can show "You: …" / "Customer: …" without a
+          // separate refetch. Without this the row stays stuck on
+          // whatever preview the initial /conversations fetch
+          // returned (often null → "No messages yet" copy).
+          lastMessage: {
+            body: parsed.data.body,
+            authorKind: actor.kind,
+            createdAt: now.toISOString(),
+          },
         },
       })
     }

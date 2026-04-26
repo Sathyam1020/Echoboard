@@ -196,10 +196,27 @@ export function attachWsGateway(server: HttpServer): void {
 }
 
 // Authenticates an upgrade request. Returns the resolved actor or null.
+//
+// Resolution order:
+//   1. If `?token=` is present → visitor identity (the explicit signal
+//      that the caller wants visitor mode). MUST come first because the
+//      same browser may also have a Better Auth session cookie if the
+//      widget iframe is same-origin with the dashboard — cookies would
+//      otherwise win and the connection would be misidentified as the
+//      logged-in user instead of the visitor.
+//   2. Better Auth session cookie → user (admin) identity.
+//   3. Legacy visitor cookie → visitor identity (covers same-origin
+//      embeds that haven't switched to the Bearer/token flow).
 async function authenticateUpgrade(
   req: IncomingMessage,
 ): Promise<Actor | null> {
-  // Try Better Auth first (admin path).
+  const queryToken = readVisitorTokenFromQuery(req)
+  if (queryToken) {
+    const visitorSession = await loadVisitorBySession(queryToken)
+    if (!visitorSession) return null
+    return { kind: "visitor", visitorId: visitorSession.visitor.id }
+  }
+
   try {
     const session = await auth.api.getSession({
       headers: nodeHeadersToFetchHeaders(req),
@@ -208,17 +225,12 @@ async function authenticateUpgrade(
       return { kind: "user", userId: session.user.id }
     }
   } catch {
-    // Fall through to visitor path.
+    // Fall through to visitor cookie.
   }
 
-  // Visitor: cookie OR ?token= query param. The widget runs cross-
-  // origin from any host SaaS site so cookies don't survive ITP /
-  // 3rd-party cookie blocking; the loader gets a Bearer-style token
-  // via /api/visitors/identify and we accept it here as a query
-  // param (browsers can't set custom headers on WebSocket).
-  const token = readVisitorTokenFromRaw(req) ?? readVisitorTokenFromQuery(req)
-  if (!token) return null
-  const visitorSession = await loadVisitorBySession(token)
+  const cookieToken = readVisitorTokenFromRaw(req)
+  if (!cookieToken) return null
+  const visitorSession = await loadVisitorBySession(cookieToken)
   if (!visitorSession) return null
   return { kind: "visitor", visitorId: visitorSession.visitor.id }
 }

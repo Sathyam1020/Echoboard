@@ -1,6 +1,6 @@
 "use client"
 
-import { MessagesSquare } from "lucide-react"
+import { Inbox } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -28,8 +28,7 @@ export function AdminSupportContent({
 }) {
   const router = useRouter()
   const params = useParams<{ conversationId?: string }>()
-  const activeId =
-    params.conversationId ?? initialConversationId ?? null
+  const activeId = params.conversationId ?? initialConversationId ?? null
 
   const wsQuery = useWorkspacesMeQuery()
   const workspace = wsQuery.data?.workspaces[0] ?? null
@@ -55,51 +54,74 @@ export function AdminSupportContent({
 
   return (
     <AdminPageShell activeItem="support" fullHeight>
-      <AppTopbar
-        title="Support"
-        subtitle="Talk to customers in real time."
-      />
-      <div className="flex flex-1 min-h-0 border-t border-border">
-        <aside className="flex w-[340px] shrink-0 flex-col border-r border-border bg-card">
-          <SearchBar value={search} onChange={setSearch} />
-          {search ? (
-            <div className="flex-1 overflow-y-auto">
-              <SearchResults
-                query={search}
-                onSelect={(conversationId) => {
-                  setSearch("")
-                  selectConversation(conversationId)
-                }}
-              />
-            </div>
-          ) : (
-            <>
-              <StatusFilter value={filter} onChange={setFilter} />
+      {/* SidebarInset is `position: relative` — anchoring the chat with
+          absolute inset:0 makes it fill that container regardless of
+          the PageEnter / flex chain in between, which kept eating
+          height through stretch + min-h-0 interactions. */}
+      <div className="absolute inset-0 flex flex-col">
+        <AppTopbar title="Inbox" subtitle="Talk to customers in real time." />
+        <div className="flex min-h-0 flex-1 border-t border-border">
+          {/* List rail. Below md, fills the screen when no conversation
+              is active; collapses to fixed width once a thread is open
+              (at md+, always visible side-by-side). */}
+          <aside
+            className={
+              "flex-col border-r border-border bg-card md:flex md:w-[340px] md:shrink-0 " +
+              (activeId ? "hidden" : "flex flex-1")
+            }
+          >
+            <SearchBar value={search} onChange={setSearch} />
+            {search ? (
               <div className="flex-1 overflow-y-auto">
-                <ConversationList
-                  filter={filter}
-                  activeId={activeId}
-                  onSelect={selectConversation}
+                <SearchResults
+                  query={search}
+                  onSelect={(conversationId) => {
+                    setSearch("")
+                    selectConversation(conversationId)
+                  }}
                 />
               </div>
-            </>
-          )}
-        </aside>
+            ) : (
+              <>
+                <StatusFilter value={filter} onChange={setFilter} />
+                <div className="flex-1 overflow-y-auto">
+                  <ConversationList
+                    filter={filter}
+                    activeId={activeId}
+                    onSelect={selectConversation}
+                  />
+                </div>
+              </>
+            )}
+          </aside>
 
-        <main className="flex flex-1 min-w-0">
-          {activeId ? (
-            <ConversationThread conversationId={activeId} />
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <EmptyHint
-                variant="card"
-                icon={MessagesSquare}
-                title="Pick a conversation"
-                description="Open a thread on the left to view messages."
+          {/* Thread pane. Below md, full-width when a conversation is
+              active; hidden when no conversation (the list takes over).
+              At md+, always visible (the empty hint shows when nothing
+              is selected). */}
+          <main
+            className={
+              "min-w-0 md:flex md:flex-1 " +
+              (activeId ? "flex flex-1" : "hidden md:flex")
+            }
+          >
+            {activeId ? (
+              <ConversationThread
+                conversationId={activeId}
+                onBack={() => router.push("/dashboard/support")}
               />
-            </div>
-          )}
-        </main>
+            ) : (
+              <div className="flex flex-1 items-center justify-center">
+                <EmptyHint
+                  variant="card"
+                  icon={Inbox}
+                  title="Pick a conversation"
+                  description="Open a thread on the left to view messages."
+                />
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </AdminPageShell>
   )

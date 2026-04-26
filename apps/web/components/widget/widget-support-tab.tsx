@@ -214,6 +214,13 @@ function StarterCard({
           rows={3}
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter sends; Shift+Enter inserts a newline.
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault()
+              ;(e.currentTarget.form as HTMLFormElement | null)?.requestSubmit()
+            }
+          }}
           placeholder="What can we help with?"
           autoFocus
         />
@@ -286,7 +293,34 @@ function WidgetSupportThread({
   visitorId: string | null
   onConversationUpdate: (c: SupportConversationRow) => void
 }) {
-  const [messages, setMessages] = useState<SupportMessageRow[]>([])
+  const [messages, setMessagesRaw] = useState<SupportMessageRow[]>([])
+
+  // Wrap setMessages to always collapse duplicate ids. React Strict Mode
+  // can briefly run two WS subscriptions in dev, and a few timing windows
+  // (optimistic temp + WS broadcast + POST response) can converge on the
+  // same real id from multiple paths. Normalising on every write makes
+  // those races invisible to the render layer.
+  const setMessages = useCallback(
+    (
+      updater:
+        | SupportMessageRow[]
+        | ((prev: SupportMessageRow[]) => SupportMessageRow[]),
+    ) => {
+      setMessagesRaw((prev) => {
+        const next =
+          typeof updater === "function" ? updater(prev) : updater
+        const seen = new Set<string>()
+        const deduped: SupportMessageRow[] = []
+        for (const m of next) {
+          if (seen.has(m.id)) continue
+          seen.add(m.id)
+          deduped.push(m)
+        }
+        return deduped
+      })
+    },
+    [],
+  )
   const [oldestCursor, setOldestCursor] = useState<string | null>(null)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [bootstrapped, setBootstrapped] = useState(false)
@@ -429,10 +463,16 @@ function WidgetSupportThread({
         `/api/support/conversations/${conversation.id}/messages`,
         { body: trimmed },
       )
-      // Replace the optimistic row with the real one.
-      setMessages((prev) =>
-        prev.map((m) => (m.id === tempId ? r.data.message : m)),
-      )
+      // Reconcile the optimistic row. If the WS broadcast got here
+      // first, the real message is already in the list — just drop
+      // the temp. Otherwise replace temp with the real row.
+      setMessages((prev) => {
+        const realAlreadyHere = prev.some((m) => m.id === r.data.message.id)
+        if (realAlreadyHere) {
+          return prev.filter((m) => m.id !== tempId)
+        }
+        return prev.map((m) => (m.id === tempId ? r.data.message : m))
+      })
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       setDraft(trimmed)
@@ -444,7 +484,8 @@ function WidgetSupportThread({
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    // Enter sends; Shift+Enter inserts a newline.
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       void send()
     }

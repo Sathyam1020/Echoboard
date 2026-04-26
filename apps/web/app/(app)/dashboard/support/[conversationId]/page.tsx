@@ -12,7 +12,7 @@ import {
 } from "@/services/support.server"
 
 export const metadata: Metadata = {
-  title: "Support",
+  title: "Inbox",
   robots: { index: false, follow: false },
 }
 

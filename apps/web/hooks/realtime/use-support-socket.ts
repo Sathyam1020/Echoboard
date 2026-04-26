@@ -43,14 +43,14 @@ export function useSupportSocket({
       (event: ServerMsg) => {
         if (event.type === "conversation.created") {
           const conv = event.conversation as SupportConversationRow
-          patchConversationsList(qc, filter, (page) => ({
+          patchConversationsList(qc, (page) => ({
             ...page,
             conversations: dedupePrepend(page.conversations, conv),
           }))
         } else if (event.type === "conversation.updated") {
           const id = event.conversationId as string
           const patch = event.patch as Partial<SupportConversationRow>
-          patchConversationsList(qc, filter, (page) => ({
+          patchConversationsList(qc, (page) => ({
             ...page,
             conversations: applyPatch(page.conversations, id, patch),
           }))
@@ -59,14 +59,14 @@ export function useSupportSocket({
           const assignedTo = event.assignedTo as
             | { id: string; name: string; image: string | null }
             | null
-          patchConversationsList(qc, filter, (page) => ({
+          patchConversationsList(qc, (page) => ({
             ...page,
             conversations: applyPatch(page.conversations, id, { assignedTo }),
           }))
         }
       },
     )
-  }, [workspaceId, filter, qc])
+  }, [workspaceId, qc])
 
   // Conversation channel — message + read events for the active thread.
   useEffect(() => {
@@ -94,22 +94,25 @@ type ConversationsInfiniteData = {
   pageParams: unknown[]
 }
 
+// Patch every conversation-list cache (across every filter combo) that
+// has the updated conversation. Using setQueriesData with a prefix key
+// match means a status-change broadcast updates the row whether the
+// user is on All / Open / Pending / Resolved / Mine. Without this the
+// non-active filters stayed stale until the user switched to them.
 function patchConversationsList(
   qc: ReturnType<typeof useQueryClient>,
-  filter: Filter | undefined,
   patcher: (page: SupportConversationsPage) => SupportConversationsPage,
 ): void {
-  const key = queryKeys.support.conversations(filter ?? {})
-  qc.setQueryData<ConversationsInfiniteData>(key, (data) => {
-    if (!data) return data
-    return {
-      ...data,
-      // Patch only the first page — that's where new conversations
-      // land and where existing conversation patches are visible. Older
-      // pages won't have the affected row anyway.
-      pages: data.pages.map((p, i) => (i === 0 ? patcher(p) : p)),
-    }
-  })
+  qc.setQueriesData<ConversationsInfiniteData>(
+    { queryKey: ["support", "conversations"] },
+    (data) => {
+      if (!data) return data
+      return {
+        ...data,
+        pages: data.pages.map((p, i) => (i === 0 ? patcher(p) : p)),
+      }
+    },
+  )
 }
 
 function dedupePrepend(

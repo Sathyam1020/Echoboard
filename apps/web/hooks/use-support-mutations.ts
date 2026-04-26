@@ -15,9 +15,40 @@ import {
 import type {
   ConversationStatus,
   SupportConversationRow,
+  SupportConversationsPage,
   SupportMessageRow,
   SupportMessagesPage,
 } from "@/components/support/types"
+
+type ConversationsCache = {
+  pages: SupportConversationsPage[]
+  pageParams: unknown[]
+}
+
+// Patch every conversation-list cache (across every filter combo) for
+// the given conversation. setQueriesData with a prefix queryKey hits
+// All / Open / Pending / Resolved / Mine in one call.
+function patchListCaches(
+  qc: ReturnType<typeof useQueryClient>,
+  conversationId: string,
+  patch: Partial<SupportConversationRow>,
+): void {
+  qc.setQueriesData<ConversationsCache>(
+    { queryKey: ["support", "conversations"] },
+    (data) => {
+      if (!data) return data
+      return {
+        ...data,
+        pages: data.pages.map((p) => ({
+          ...p,
+          conversations: p.conversations.map((c) =>
+            c.id === conversationId ? { ...c, ...patch } : c,
+          ),
+        })),
+      }
+    },
+  )
+}
 
 function describeError(err: unknown, fallback: string): string {
   if (err instanceof ApiError) return err.message
@@ -86,8 +117,11 @@ export function useSetConversationStatusMutation(
             ? { conversation: { ...data.conversation, status } }
             : data,
       )
-      // The WS broadcast handles list-cache patches across all filter
-      // combos for us. We only refresh local detail.
+      // Also patch every conversation-list cache so the row reflects
+      // the new status immediately (don't wait for the WS round-trip
+      // — and don't depend on it; some filter caches may not be
+      // visited at all between events).
+      patchListCaches(qc, conversationId, { status })
       void workspaceId
       toast.success(
         status === "resolved"
@@ -129,6 +163,7 @@ export function useSetConversationAssigneeMutation(
               }
             : data,
       )
+      patchListCaches(qc, conversationId, { assignedTo: vars.assignee })
       void workspaceId
       toast.success(vars.userId ? "Assigned" : "Unassigned")
     },
