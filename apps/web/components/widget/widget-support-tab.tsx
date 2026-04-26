@@ -15,6 +15,9 @@ import {
   useState,
 } from "react"
 
+import { useTeamPresence } from "@/hooks/realtime/use-team-presence"
+import { useTypingIndicator } from "@/hooks/realtime/use-typing-indicator"
+import { useTypingSender } from "@/hooks/realtime/use-typing-sender"
 import { ApiError } from "@/lib/http/api-error"
 import { setWidgetBearer, widgetHttp } from "@/lib/http/widget-axios"
 import {
@@ -24,6 +27,7 @@ import {
 import type { ServerMsg } from "@/lib/realtime/socket-client"
 import type { VisitorIdentity } from "@/services/visitors"
 
+import { TypingDots } from "@/components/support/typing-dots"
 import type {
   SupportConversationRow,
   SupportMessageRow,
@@ -93,6 +97,8 @@ export function WidgetSupportTab({
     return (
       <WidgetSupportThread
         conversation={conversation}
+        workspaceId={workspaceId}
+        workspaceSlug={workspaceSlug}
         visitorId={visitor?.id ?? null}
         onConversationUpdate={setConversation}
       />
@@ -286,14 +292,24 @@ function StarterCard({
 
 function WidgetSupportThread({
   conversation,
+  workspaceSlug,
+  workspaceId,
   visitorId,
   onConversationUpdate,
 }: {
   conversation: SupportConversationRow
+  workspaceSlug: string
+  workspaceId: string
   visitorId: string | null
   onConversationUpdate: (c: SupportConversationRow) => void
 }) {
   const [messages, setMessagesRaw] = useState<SupportMessageRow[]>([])
+  const isAdminTyping = useTypingIndicator({
+    conversationId: conversation.id,
+    selfActorId: visitorId,
+  })
+  const typing = useTypingSender(conversation.id)
+  const teamOnline = useTeamPresence({ workspaceSlug, workspaceId })
 
   // Wrap setMessages to always collapse duplicate ids. React Strict Mode
   // can briefly run two WS subscriptions in dev, and a few timing windows
@@ -437,6 +453,7 @@ function WidgetSupportThread({
   async function send() {
     const trimmed = draft.trim()
     if (!trimmed || sending) return
+    typing.stopNow()
     setSending(true)
     // Optimistic append.
     const tempId = `temp-${Date.now()}`
@@ -499,6 +516,22 @@ function WidgetSupportThread({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {/* Presence header — small banner with a colored dot. Updates
+          live via the workspace channel's presence events. */}
+      <div className="flex items-center gap-2 border-b border-border-soft bg-card px-4 py-2">
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 rounded-full",
+            teamOnline ? "bg-green-500" : "bg-muted-foreground/50",
+          )}
+        />
+        <span className="text-[12px] text-muted-foreground">
+          {teamOnline
+            ? "Team is online"
+            : "Team is offline — leave a message and they'll see it next time"}
+        </span>
+      </div>
       <div
         ref={scrollRef}
         onScroll={onScroll}
@@ -584,11 +617,21 @@ function WidgetSupportThread({
         })}
       </div>
 
+      {isAdminTyping ? (
+        <div className="border-t border-border-soft bg-card px-3 py-2">
+          <TypingDots label="Team is typing…" />
+        </div>
+      ) : null}
+
       <div className="flex items-end gap-2 border-t border-border bg-card p-3">
         <Textarea
           value={draft}
-          onChange={(e) => setDraft(e.target.value.slice(0, 4000))}
+          onChange={(e) => {
+            setDraft(e.target.value.slice(0, 4000))
+            typing.notifyKeystroke()
+          }}
           onKeyDown={onKeyDown}
+          onBlur={() => typing.stopNow()}
           rows={1}
           placeholder="Reply…"
           className="min-h-[36px] resize-none text-[13px]"

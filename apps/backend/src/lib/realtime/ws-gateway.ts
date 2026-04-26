@@ -18,11 +18,13 @@ import { logger } from "../logger.js"
 
 import {
   canSubscribe,
+  channelFor,
   parseChannel,
   type Actor,
 } from "./channels.js"
 import type { ClientMsg, ServerMsg } from "./events.js"
-import { onMessage as onBusMessage } from "./redis-bus.js"
+import { addPresence, onPresenceChange, removePresence } from "./presence.js"
+import { publish, onMessage as onBusMessage } from "./redis-bus.js"
 
 // Attaches the upgrade handler. Call once on server boot.
 export function attachWsGateway(server: HttpServer): void {
@@ -68,6 +70,17 @@ export function attachWsGateway(server: HttpServer): void {
     }
   })
 
+  // Bridge presence changes onto the workspace channel so anyone
+  // subscribed (admin sidebars, widget thread headers) gets a live
+  // online/offline indicator without polling.
+  onPresenceChange(({ workspaceId, userId, status }) => {
+    void publish(channelFor.workspace(workspaceId), {
+      type: "presence",
+      userId,
+      status,
+    })
+  })
+
   // ── Heartbeat sweep ──────────────────────────────────────────────
   // Drop sockets that haven't replied to a ping in 60s.
   const HEARTBEAT_MS = 25_000
@@ -109,9 +122,24 @@ export function attachWsGateway(server: HttpServer): void {
       })
   })
 
+  // Per-user open-socket counter so presence stays "online" until the
+  // LAST socket for a user closes (the same admin can have two
+  // dashboard tabs open and shouldn't drop offline when one closes).
+  const userSocketCount = new Map<string, number>()
+
   function attachSocket(ws: WebSocket, actor: Actor): void {
     const w = ws as WebSocket & { isAlive?: boolean }
     w.isAlive = true
+
+    if (actor.kind === "user") {
+      const next = (userSocketCount.get(actor.userId) ?? 0) + 1
+      userSocketCount.set(actor.userId, next)
+      if (next === 1) {
+        void addPresence(actor.userId).catch((err) =>
+          logger.error({ err }, "addPresence failed"),
+        )
+      }
+    }
 
     ws.on("pong", () => {
       w.isAlive = true
@@ -131,6 +159,17 @@ export function attachWsGateway(server: HttpServer): void {
 
     ws.on("close", () => {
       removeAllSubsFor(ws)
+      if (actor.kind === "user") {
+        const next = (userSocketCount.get(actor.userId) ?? 1) - 1
+        if (next <= 0) {
+          userSocketCount.delete(actor.userId)
+          void removePresence(actor.userId).catch((err) =>
+            logger.error({ err }, "removePresence failed"),
+          )
+        } else {
+          userSocketCount.set(actor.userId, next)
+        }
+      }
     })
   }
 
@@ -181,10 +220,47 @@ export function attachWsGateway(server: HttpServer): void {
         return
       }
 
-      // typing + presence are wired in phase 6. Accept the events on
-      // the wire today so clients can ship without protocol churn,
-      // but no-op them for now.
-      case "typing":
+      case "typing": {
+        // Server-side hard cap: 5 typing events per second per socket.
+        // Composer-side throttle is the primary defense; this is the
+        // belt against a misbehaving / hostile client.
+        const w = ws as WebSocket & { typingBudget?: number[] }
+        const now = Date.now()
+        const recent = (w.typingBudget ?? []).filter((t) => now - t < 1000)
+        if (recent.length >= 5) {
+          w.typingBudget = recent
+          return
+        }
+        recent.push(now)
+        w.typingBudget = recent
+
+        // Validate that the actor is a participant of the conversation.
+        const conversationChannel = channelFor.conversation(
+          msg.conversationId,
+        )
+        const allowed = await canSubscribe(
+          actor,
+          parseChannel(conversationChannel),
+        )
+        if (!allowed) return
+
+        // Fan out via the same bus the message events use. Listeners
+        // dedupe self-fired typing on the client so the typer doesn't
+        // see their own dots.
+        await publish(conversationChannel, {
+          type: "typing",
+          conversationId: msg.conversationId,
+          actorId:
+            actor.kind === "user" ? actor.userId : actor.visitorId,
+          actorKind: actor.kind,
+          isTyping: msg.isTyping,
+        })
+        return
+      }
+
+      // Presence is phase 6's second deliverable — wire-format reserved,
+      // implementation lands in a follow-up commit alongside the Redis
+      // SADD presence set.
       case "presence":
         return
     }

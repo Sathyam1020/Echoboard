@@ -22,11 +22,14 @@ import {
   useSetConversationStatusMutation,
 } from "@/hooks/use-support-mutations"
 
+import { useTypingIndicator } from "@/hooks/realtime/use-typing-indicator"
+
 import { AssigneePicker } from "./assignee-picker"
 import { SupportAvatar } from "./avatar"
 import { Composer } from "./composer"
 import { MessageBubble } from "./message-bubble"
 import { StatusPill } from "./status-pill"
+import { TypingDots } from "./typing-dots"
 import type { ConversationStatus } from "./types"
 
 export function ConversationThread({
@@ -40,6 +43,10 @@ export function ConversationThread({
   const convQuery = useSupportConversationQuery(conversationId)
   const msgsQuery = useSupportMessagesInfiniteQuery(conversationId)
   const { data: session } = authClient.useSession()
+  const isOtherTyping = useTypingIndicator({
+    conversationId,
+    selfActorId: session?.user.id ?? null,
+  })
 
   const conv = convQuery.data?.conversation
   const send = useSendSupportMessageMutation(conversationId)
@@ -175,7 +182,16 @@ export function ConversationThread({
         })}
       </div>
 
+      {isOtherTyping ? (
+        <div className="border-t border-border-soft bg-card px-5 py-2">
+          <TypingDots
+            label={`${conv.customer.name.split(" ")[0]} is typing…`}
+          />
+        </div>
+      ) : null}
+
       <Composer
+        conversationId={conversationId}
         onSend={async (body) => {
           await send.mutateAsync(body)
         }}

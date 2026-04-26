@@ -1070,6 +1070,36 @@ supportRouter.get(
   },
 )
 
+// ── Presence (initial load) ───────────────────────────────────────
+
+// "Is anyone from this workspace online right now?" — the widget calls
+// this on mount to seed its header indicator before WebSocket presence
+// events start streaming.
+supportRouter.get("/presence", async (req: Request, res: Response) => {
+  const slug =
+    typeof req.query.workspaceSlug === "string"
+      ? req.query.workspaceSlug
+      : null
+  if (!slug) {
+    throw new AppError("workspaceSlug required", {
+      status: 400,
+      code: "VALIDATION_ERROR",
+    })
+  }
+  const [ws] = await db
+    .select({ id: workspace.id })
+    .from(workspace)
+    .where(eq(workspace.slug, slug))
+  if (!ws) {
+    throw new AppError("Workspace not found", {
+      status: 404,
+      code: "WORKSPACE_NOT_FOUND",
+    })
+  }
+  const { isAnyoneOnline } = await import("../lib/realtime/presence.js")
+  res.json({ online: isAnyoneOnline(ws.id) })
+})
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 async function loadAuthorJoin(

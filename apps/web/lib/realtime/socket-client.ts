@@ -252,3 +252,15 @@ export function onConnectionState(listener: StateListener): () => void {
 export function getConnectionState(): ConnectionState {
   return connectionState
 }
+
+// Send a JSON-encoded message over the singleton socket. No-op when
+// the socket isn't open — typing/presence events are best-effort and
+// not worth queueing across reconnects (the indicator self-clears).
+export function sendOverSocket(message: Record<string, unknown>): void {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return
+  try {
+    socket.send(JSON.stringify(message))
+  } catch {
+    // Mid-close socket can throw — silent fallthrough.
+  }
+}
