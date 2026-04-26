@@ -35,6 +35,11 @@ const envSchema = z.object({
   // emails are logged to stderr instead of sent.
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().email().default("onboarding@example.com"),
+
+  // Optional in dev. With it set, support-chat realtime events fan out
+  // across backend replicas via Redis Pub/Sub. Without it, single-process
+  // delivery only — works fine locally.
+  REDIS_URL: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)
