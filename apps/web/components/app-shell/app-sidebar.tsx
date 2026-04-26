@@ -23,6 +23,7 @@ import Link from "next/link"
 import { SignOutButton } from "@/components/nav/sign-out-button"
 
 import { AnimatedNavItem, AnimatedNavItemDisabled } from "./animated-nav-item"
+import { SupportNavItem } from "./support-nav-item"
 import { WorkspaceSwitcher } from "./workspace-switcher"
 
 export type SidebarBoard = {
@@ -101,6 +102,7 @@ export function AppSidebar({
               href="/dashboard/changelog"
               isActive={activeItem === "changelog"}
             />
+            <SupportNavItem isActive={activeItem === "support"} />
             <AnimatedNavItem
               icon={SettingsIcon}
               label="Settings"
