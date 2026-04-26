@@ -18,12 +18,13 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
-import { ChevronDown } from "lucide-react"
 import Link from "next/link"
 
 import { SignOutButton } from "@/components/nav/sign-out-button"
 
 import { AnimatedNavItem, AnimatedNavItemDisabled } from "./animated-nav-item"
+import { SupportNavItem } from "./support-nav-item"
+import { WorkspaceSwitcher } from "./workspace-switcher"
 
 export type SidebarBoard = {
   id: string
@@ -46,6 +47,7 @@ export type SidebarActiveItem =
   | "changelog"
   | "comments"
   | "analytics"
+  | "support"
   | "settings"
   | null
 
@@ -58,15 +60,11 @@ const BOARD_DOT_COLORS = [
 
 export function AppSidebar({
   workspaceName,
-  workspacePlan = "Free",
-  workspaceMemberCount = 1,
   boards,
   activeItem,
   user,
 }: {
   workspaceName: string
-  workspacePlan?: string
-  workspaceMemberCount?: number
   boards: SidebarBoard[]
   activeItem: SidebarActiveItem
   user: SidebarUser
@@ -74,24 +72,7 @@ export function AppSidebar({
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-2 pb-0">
-        <div className="flex items-center gap-2.5 rounded-md p-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1">
-          <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-medium text-primary-foreground">
-            E
-          </div>
-          <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-[13px] font-medium">
-              {workspaceName}
-            </div>
-            <div className="text-[11px] leading-none text-muted-foreground">
-              {workspacePlan} · {workspaceMemberCount}{" "}
-              {workspaceMemberCount === 1 ? "member" : "members"}
-            </div>
-          </div>
-          <ChevronDown
-            className="size-3.5 text-muted-foreground group-data-[collapsible=icon]:hidden"
-            aria-hidden="true"
-          />
-        </div>
+        <WorkspaceSwitcher fallbackName={workspaceName} />
       </SidebarHeader>
 
       <SidebarContent>
@@ -121,6 +102,7 @@ export function AppSidebar({
               href="/dashboard/changelog"
               isActive={activeItem === "changelog"}
             />
+            <SupportNavItem isActive={activeItem === "support"} />
             <AnimatedNavItem
               icon={SettingsIcon}
               label="Settings"

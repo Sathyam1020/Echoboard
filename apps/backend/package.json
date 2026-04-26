@@ -21,15 +21,18 @@
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
+    "ioredis": "^5.10.1",
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "tsx": "^4.19.2",
+    "ws": "^8.20.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^25.1.0",
+    "@types/ws": "^8.18.1",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "eslint": "^9.39.2",

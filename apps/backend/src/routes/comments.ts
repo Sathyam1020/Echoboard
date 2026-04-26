@@ -7,6 +7,7 @@ import {
   serializeComment,
   type CommentRow,
 } from "../lib/serialize-comment.js"
+import { getMemberRole, isAtLeastRole } from "../lib/workspace-context.js"
 import { AppError } from "../middleware/error-handler.js"
 import { requireAuth } from "../middleware/require-auth.js"
 
@@ -20,6 +21,7 @@ async function loadCommentWithOwner(commentId: string) {
   const [row] = await db
     .select({
       comment: comment,
+      workspaceId: workspace.id,
       workspaceOwnerId: workspace.ownerId,
     })
     .from(comment)
@@ -30,20 +32,20 @@ async function loadCommentWithOwner(commentId: string) {
   return row ?? null
 }
 
-function assertCanMutate(
+async function assertCanMutate(
   userId: string,
   authorId: string | null,
-  workspaceOwnerId: string,
-): void {
-  // authorId is null for visitor-authored comments — those can only be
-  // mutated by the workspace owner here. Visitor self-edit lands in v2
-  // alongside visitor auth on /api/comments/*.
-  if (userId !== authorId && userId !== workspaceOwnerId) {
-    throw new AppError("You cannot modify this comment", {
-      status: 403,
-      code: "FORBIDDEN",
-    })
-  }
+  workspaceId: string,
+): Promise<void> {
+  // Comment authors can edit/delete their own. Anyone admin+ in the
+  // workspace can moderate any comment (incl. visitor-authored).
+  if (userId === authorId) return
+  const role = await getMemberRole(userId, workspaceId)
+  if (isAtLeastRole(role, "admin")) return
+  throw new AppError("You cannot modify this comment", {
+    status: 403,
+    code: "FORBIDDEN",
+  })
 }
 
 commentsRouter.patch(
@@ -82,7 +84,7 @@ commentsRouter.patch(
     }
 
     const userId = res.locals.session!.user.id
-    assertCanMutate(userId, row.comment.authorId, row.workspaceOwnerId)
+    await assertCanMutate(userId, row.comment.authorId, row.workspaceId)
 
     await db
       .update(comment)
@@ -144,7 +146,7 @@ commentsRouter.delete(
     }
 
     const userId = res.locals.session!.user.id
-    assertCanMutate(userId, row.comment.authorId, row.workspaceOwnerId)
+    await assertCanMutate(userId, row.comment.authorId, row.workspaceId)
 
     if (!row.comment.deletedAt) {
       await db

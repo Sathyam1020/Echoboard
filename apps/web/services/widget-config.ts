@@ -12,6 +12,7 @@ export type WidgetBoardConfig = {
   position: "bottom-right" | "bottom-left"
   buttonText: string
   showBranding: boolean
+  supportEnabled: boolean
 }
 
 export async function fetchWidgetConfig(boardId: string): Promise<WidgetBoardConfig> {
@@ -23,7 +24,12 @@ export async function fetchWidgetConfig(boardId: string): Promise<WidgetBoardCon
 
 export async function updateWidgetConfig(
   boardId: string,
-  body: Partial<Pick<WidgetBoardConfig, "color" | "position" | "buttonText" | "showBranding">>,
+  body: Partial<
+    Pick<
+      WidgetBoardConfig,
+      "color" | "position" | "buttonText" | "showBranding" | "supportEnabled"
+    >
+  >,
 ): Promise<WidgetBoardConfig> {
   const { data } = await httpClient.patch<WidgetBoardConfig>(
     `/api/boards/${encodeURIComponent(boardId)}/widget-config`,

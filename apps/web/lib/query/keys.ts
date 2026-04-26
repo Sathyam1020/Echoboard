@@ -85,4 +85,31 @@ export const queryKeys = {
   widget: {
     config: (boardId: string) => ["widget", "config", boardId] as const,
   },
+
+  team: {
+    members: () => ["team", "members"] as const,
+    invites: () => ["team", "invites"] as const,
+    invitePreview: (token: string) =>
+      ["team", "invite-preview", token] as const,
+  },
+
+  support: {
+    /** Admin conversation list — separate cache per filter combo. */
+    conversations: (filter: {
+      status?: "open" | "pending" | "resolved"
+      mine?: boolean
+    }) => ["support", "conversations", filter] as const,
+    conversation: (id: string) =>
+      ["support", "conversation", id] as const,
+    messages: (conversationId: string) =>
+      ["support", "messages", conversationId] as const,
+    audit: (conversationId: string) =>
+      ["support", "audit", conversationId] as const,
+    search: (q: string) => ["support", "search", q] as const,
+    /** Customer-side "my conversation in workspace X". */
+    me: (workspaceSlug: string) =>
+      ["support", "me", workspaceSlug] as const,
+    widgetConfig: (boardId: string) =>
+      ["support", "widget-config", boardId] as const,
+  },
 }

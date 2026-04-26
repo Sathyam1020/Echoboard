@@ -18,10 +18,17 @@ import {
   useDashboardBoardsQuery,
 } from "@/hooks/use-dashboard"
 
-export function FeedbackPageContent() {
+export function FeedbackPageContent({
+  initialBoardId,
+}: {
+  // SSR-resolved active board (URL param OR active_board_id cookie OR
+  // boards[0]). The client falls back to it when the URL has no
+  // ?boardId so the rendered board matches the prefetched data.
+  initialBoardId?: string
+}) {
   const boardsQuery = useDashboardBoardsQuery()
   const searchParams = useSearchParams()
-  const boardIdParam = searchParams.get("boardId")
+  const boardIdParam = searchParams.get("boardId") ?? initialBoardId ?? null
 
   const boards = boardsQuery.data?.boards ?? []
   const activeBoard =

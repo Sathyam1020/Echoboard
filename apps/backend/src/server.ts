@@ -3,12 +3,22 @@ import type { Server } from "node:http"
 import { createApp } from "./app.js"
 import { env } from "./config/env.js"
 import { logger } from "./lib/logger.js"
+import { startRedisBus } from "./lib/realtime/redis-bus.js"
+import { attachWsGateway } from "./lib/realtime/ws-gateway.js"
 
 const app = createApp()
 
 const server: Server = app.listen(env.PORT, () => {
   logger.info(`server listening on :${env.PORT}`)
 })
+
+// Boot the realtime stack: redis pub/sub bus first (sets up the
+// listener registry), then the WS gateway which subscribes to it.
+// Errors during bus startup don't kill the HTTP server — the fan-out
+// just degrades to in-process delivery.
+void startRedisBus(env.REDIS_URL)
+  .catch((err) => logger.error({ err }, "redis bus startup failed"))
+  .then(() => attachWsGateway(server))
 
 const SHUTDOWN_TIMEOUT_MS = 10_000
 

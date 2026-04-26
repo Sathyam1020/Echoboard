@@ -2,6 +2,7 @@ import { db, desc, eq, sql } from "@workspace/db/client"
 import { board, post, user, visitor, workspace } from "@workspace/db/schema"
 import { Router, type Request, type Response } from "express"
 
+import { requireWorkspaceMember } from "../lib/workspace-context.js"
 import { requireAuth } from "../middleware/require-auth.js"
 
 export const dashboardRouter: Router = Router()
@@ -9,8 +10,9 @@ export const dashboardRouter: Router = Router()
 dashboardRouter.get(
   "/boards",
   requireAuth,
+  requireWorkspaceMember(),
   async (_req: Request, res: Response) => {
-    const session = res.locals.session!
+    const ctx = res.locals.workspaceContext!
 
     const rows = await db
       .select({
@@ -26,7 +28,7 @@ dashboardRouter.get(
       .from(board)
       .innerJoin(workspace, eq(board.workspaceId, workspace.id))
       .leftJoin(post, eq(post.boardId, board.id))
-      .where(eq(workspace.ownerId, session.user.id))
+      .where(eq(workspace.id, ctx.workspace.id))
       .groupBy(board.id, workspace.id)
       .orderBy(desc(board.createdAt))
 
@@ -37,8 +39,9 @@ dashboardRouter.get(
 dashboardRouter.get(
   "/recent-posts",
   requireAuth,
+  requireWorkspaceMember(),
   async (_req: Request, res: Response) => {
-    const session = res.locals.session!
+    const ctx = res.locals.workspaceContext!
 
     const rows = await db
       .select({
@@ -60,7 +63,7 @@ dashboardRouter.get(
       .innerJoin(workspace, eq(board.workspaceId, workspace.id))
       .leftJoin(user, eq(post.authorId, user.id))
       .leftJoin(visitor, eq(post.visitorId, visitor.id))
-      .where(eq(workspace.ownerId, session.user.id))
+      .where(eq(workspace.id, ctx.workspace.id))
       .orderBy(desc(post.createdAt))
       .limit(5)
 

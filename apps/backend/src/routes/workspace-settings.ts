@@ -5,19 +5,33 @@ import { board, workspace } from "@workspace/db/schema"
 import { Router, type Request, type Response } from "express"
 import { z } from "zod"
 
+import {
+  assertCanMutateWorkspace,
+  getActiveWorkspace,
+  requireWorkspaceMember,
+} from "../lib/workspace-context.js"
 import { AppError } from "../middleware/error-handler.js"
 import { requireAuth } from "../middleware/require-auth.js"
 
 export const workspaceSettingsRouter: Router = Router()
 
-async function loadOwnedWorkspace(userId: string) {
+// Resolves the workspace the admin is currently acting on (active_workspace_id
+// cookie + workspace_member). Replaces the old "first owned workspace" lookup
+// so members of multiple workspaces hit the right one.
+async function loadActiveAdminWorkspace(req: Request) {
+  const ctx = await getActiveWorkspace(req)
+  if (!ctx) {
+    throw new AppError("No workspace found for this user", {
+      status: 404,
+      code: "WORKSPACE_NOT_FOUND",
+    })
+  }
   const [ws] = await db
     .select()
     .from(workspace)
-    .where(eq(workspace.ownerId, userId))
-    .orderBy(workspace.createdAt)
+    .where(eq(workspace.id, ctx.workspace.id))
   if (!ws) {
-    throw new AppError("No workspace found for this user", {
+    throw new AppError("Workspace not found", {
       status: 404,
       code: "WORKSPACE_NOT_FOUND",
     })
@@ -40,9 +54,9 @@ function serializeSettings(ws: typeof workspace.$inferSelect) {
 workspaceSettingsRouter.get(
   "/",
   requireAuth,
-  async (_req: Request, res: Response) => {
-    const session = res.locals.session!
-    const ws = await loadOwnedWorkspace(session.user.id)
+  requireWorkspaceMember(),
+  async (req: Request, res: Response) => {
+    const ws = await loadActiveAdminWorkspace(req)
     res.json({ settings: serializeSettings(ws) })
   },
 )
@@ -64,6 +78,7 @@ const updateSettingsBody = z
 workspaceSettingsRouter.patch(
   "/",
   requireAuth,
+  requireWorkspaceMember("admin"),
   async (req: Request, res: Response) => {
     const parsed = updateSettingsBody.safeParse(req.body)
     if (!parsed.success) {
@@ -72,8 +87,7 @@ workspaceSettingsRouter.patch(
         { status: 400, code: "VALIDATION_ERROR" },
       )
     }
-    const session = res.locals.session!
-    const ws = await loadOwnedWorkspace(session.user.id)
+    const ws = await loadActiveAdminWorkspace(req)
 
     const patch: Record<string, unknown> = {}
     if (parsed.data.publicBoardAuth !== undefined)
@@ -95,9 +109,9 @@ workspaceSettingsRouter.patch(
 workspaceSettingsRouter.post(
   "/regenerate-identify-key",
   requireAuth,
-  async (_req: Request, res: Response) => {
-    const session = res.locals.session!
-    const ws = await loadOwnedWorkspace(session.user.id)
+  requireWorkspaceMember("admin"),
+  async (req: Request, res: Response) => {
+    const ws = await loadActiveAdminWorkspace(req)
     const newKey = randomBytes(32).toString("hex")
     const [updated] = await db
       .update(workspace)
@@ -151,6 +165,7 @@ widgetConfigPublicRouter.get(
       position: row.board.widgetPosition,
       buttonText: row.board.widgetButtonText,
       showBranding: row.board.widgetShowBranding,
+      supportEnabled: row.board.supportEnabled,
     })
   },
 )
@@ -161,13 +176,15 @@ const widgetConfigBody = z
     position: z.enum(["bottom-right", "bottom-left"]).optional(),
     buttonText: z.string().trim().min(1).max(24).optional(),
     showBranding: z.boolean().optional(),
+    supportEnabled: z.boolean().optional(),
   })
   .refine(
     (v) =>
       v.color !== undefined ||
       v.position !== undefined ||
       v.buttonText !== undefined ||
-      v.showBranding !== undefined,
+      v.showBranding !== undefined ||
+      v.supportEnabled !== undefined,
     { message: "Provide at least one field" },
   )
 
@@ -195,7 +212,7 @@ widgetConfigAdminRouter.patch(
     const [row] = await db
       .select({
         board: board,
-        workspaceOwnerId: workspace.ownerId,
+        workspaceId: workspace.id,
       })
       .from(board)
       .innerJoin(workspace, eq(board.workspaceId, workspace.id))
@@ -206,12 +223,7 @@ widgetConfigAdminRouter.patch(
         code: "BOARD_NOT_FOUND",
       })
     }
-    if (row.workspaceOwnerId !== session.user.id) {
-      throw new AppError("Only workspace owner can update widget config", {
-        status: 403,
-        code: "FORBIDDEN",
-      })
-    }
+    await assertCanMutateWorkspace(session.user.id, row.workspaceId)
 
     const patch: Record<string, unknown> = {}
     if (parsed.data.color !== undefined) {
@@ -229,6 +241,8 @@ widgetConfigAdminRouter.patch(
       patch.widgetButtonText = parsed.data.buttonText
     if (parsed.data.showBranding !== undefined)
       patch.widgetShowBranding = parsed.data.showBranding
+    if (parsed.data.supportEnabled !== undefined)
+      patch.supportEnabled = parsed.data.supportEnabled
 
     const [updated] = await db
       .update(board)
@@ -242,6 +256,7 @@ widgetConfigAdminRouter.patch(
         widgetPosition: updated!.widgetPosition,
         widgetButtonText: updated!.widgetButtonText,
         widgetShowBranding: updated!.widgetShowBranding,
+        supportEnabled: updated!.supportEnabled,
       },
     })
   },

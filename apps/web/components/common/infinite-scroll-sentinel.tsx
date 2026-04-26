@@ -47,6 +47,10 @@ export function InfiniteScrollSentinel({
   }, [hasNextPage, onLoadMore])
 
   if (!hasNextPage) {
+    // Empty endLabel → render nothing. Useful for "load older" sentinels
+    // at the top of a chat thread, where the natural end is the START
+    // of the conversation and a label would be misleading.
+    if (!endLabel) return null
     return (
       <div className="py-8 text-center text-[12px] text-muted-foreground/70">
         {endLabel}

@@ -8,8 +8,10 @@ export function OnboardingBoardContent() {
   const { data } = useWorkspacesMeQuery()
   if (!data) return null
 
-  // Most recent workspace is the one just created in Step 1.
-  const workspace = data.workspaces[data.workspaces.length - 1]
+  // /api/workspaces/me returns memberships ordered newest-first now, so
+  // the workspace just created in Step 1 sits at index 0. (Pre-Phase 2
+  // it was at the end of the list — that ordering is gone.)
+  const workspace = data.workspaces[0]
   if (!workspace) return null
 
   return (

@@ -7,6 +7,8 @@ import { dashboardRouter } from "./dashboard.js"
 import { healthRouter } from "./health.js"
 import { postsRouter } from "./posts.js"
 import { profileRouter } from "./profile.js"
+import { supportRouter } from "./support.js"
+import { teamRouter } from "./team.js"
 import { visitorsRouter } from "./visitors.js"
 import {
   widgetConfigAdminRouter,
@@ -28,5 +30,7 @@ apiRouter.use("/comments", commentsRouter)
 apiRouter.use("/dashboard", dashboardRouter)
 apiRouter.use("/changelog", changelogRouter)
 apiRouter.use("/visitors", visitorsRouter)
+apiRouter.use("/team", teamRouter)
+apiRouter.use("/support", supportRouter)
 // Mounted at /api/widget — public read, served with CORS *.
 apiRouter.use("/widget", widgetConfigPublicRouter)

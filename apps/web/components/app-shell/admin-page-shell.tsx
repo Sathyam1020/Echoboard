@@ -12,8 +12,14 @@ import { authClient } from "@/lib/auth-client"
 // react-query cache (hydrated by the parent server page's prefetch),
 // then composes AppShell + AppSidebar with the active sidebar item the
 // page passes in. Page bodies render as `children`.
+//
+// `fullHeight` opts the page into a flex-column body that fills the
+// SidebarInset (used by /dashboard/support so the chat thread can run
+// flush to the viewport bottom). Default block flow keeps existing
+// pages unchanged.
 export function AdminPageShell({
   activeItem,
+  fullHeight = false,
   children,
 }: {
   activeItem:
@@ -21,7 +27,9 @@ export function AdminPageShell({
     | "feedback"
     | "roadmap"
     | "changelog"
+    | "support"
     | "settings"
+  fullHeight?: boolean
   children: ReactNode
 }) {
   const { data } = useDashboardBoardsQuery()
@@ -53,7 +61,13 @@ export function AdminPageShell({
         />
       }
     >
-      <PageEnter>{children}</PageEnter>
+      <PageEnter
+        className={
+          fullHeight ? "flex flex-1 min-h-0 flex-col" : undefined
+        }
+      >
+        {children}
+      </PageEnter>
     </AppShell>
   )
 }

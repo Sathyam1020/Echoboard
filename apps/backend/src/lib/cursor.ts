@@ -42,7 +42,27 @@ export type ChangelogCursor = {
   id: string
 }
 
-export type AnyCursor = PostsCursor | CommentsCursor | ChangelogCursor
+export type SupportConversationsCursor = {
+  k: "support-convs"
+  /** ISO date — `last_message_at` of the last conversation on the page. */
+  lm: string
+  id: string
+}
+
+export type SupportMessagesCursor = {
+  k: "support-msgs"
+  /** ISO date — `created_at` of the OLDEST message on the page (we
+   *  paginate older-than-cursor on scroll-up). */
+  ca: string
+  id: string
+}
+
+export type AnyCursor =
+  | PostsCursor
+  | CommentsCursor
+  | ChangelogCursor
+  | SupportConversationsCursor
+  | SupportMessagesCursor
 
 export function encodeCursor(cursor: AnyCursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf-8").toString("base64url")
@@ -70,12 +90,20 @@ export const isCommentsCursor = (c: AnyCursor): c is CommentsCursor =>
   c.k === "comments"
 export const isChangelogCursor = (c: AnyCursor): c is ChangelogCursor =>
   c.k === "changelog"
+export const isSupportConversationsCursor = (
+  c: AnyCursor,
+): c is SupportConversationsCursor => c.k === "support-convs"
+export const isSupportMessagesCursor = (
+  c: AnyCursor,
+): c is SupportMessagesCursor => c.k === "support-msgs"
 
 /** Standard page sizes — exported so frontend types/SSR can mirror. */
 export const PAGE_SIZE = {
   posts: 10,
   comments: 10,
   changelog: 10,
+  supportConversations: 20,
+  supportMessages: 20,
 } as const
 
 /** Parses sort param from query string, defaults to "newest". */

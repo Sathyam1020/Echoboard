@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 const TABS = [
   { id: "general", label: "General", href: "/dashboard/settings" },
   { id: "widget", label: "Widget", href: "/dashboard/settings/widget" },
+  { id: "team", label: "Team", href: "/dashboard/settings/team" },
   {
     id: "integrations",
     label: "Integrations",

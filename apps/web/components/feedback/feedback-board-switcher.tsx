@@ -7,14 +7,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
-import { Check, ChevronDown } from "lucide-react"
+import { Check, ChevronDown, Loader2 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
+import { useTransition } from "react"
 
 export type SwitcherBoard = {
   id: string
   name: string
   slug: string
   postCount: number
+}
+
+// 90 days, matches the workspace cookie. Plenty for "remember my last
+// board" without leaking forever.
+const ACTIVE_BOARD_COOKIE_MAX_AGE = 90 * 24 * 60 * 60
+
+function persistActiveBoard(boardId: string): void {
+  if (typeof document === "undefined") return
+  document.cookie = [
+    `active_board_id=${encodeURIComponent(boardId)}`,
+    "Path=/",
+    "SameSite=Lax",
+    `Max-Age=${ACTIVE_BOARD_COOKIE_MAX_AGE}`,
+  ].join("; ")
 }
 
 export function FeedbackBoardSwitcher({
@@ -35,7 +50,20 @@ export function FeedbackBoardSwitcher({
   const pathname = usePathname()
   const target = basePath ?? pathname
   const active = boards.find((b) => b.id === activeBoardId) ?? boards[0]
+
+  // Wraps router.push so the spinner stays through the SSR re-render
+  // (data refetch for the new boardId), not just the URL change itself.
+  const [isSwitching, startTransition] = useTransition()
+
   if (!active) return null
+
+  function pickBoard(id: string): void {
+    if (id === active!.id || isSwitching) return
+    persistActiveBoard(id)
+    startTransition(() => {
+      router.push(`${target}?boardId=${encodeURIComponent(id)}`)
+    })
+  }
 
   return (
     <DropdownMenu>
@@ -44,18 +72,28 @@ export function FeedbackBoardSwitcher({
           variant="outline"
           size="sm"
           className="gap-1.5 font-medium"
+          disabled={isSwitching}
         >
           {active.name}
-          <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
+          {isSwitching ? (
+            <Loader2
+              className="size-3.5 text-muted-foreground motion-safe:animate-spin"
+              aria-hidden
+            />
+          ) : (
+            <ChevronDown
+              className="size-3.5 text-muted-foreground"
+              aria-hidden
+            />
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[220px]">
         {boards.map((b) => (
           <DropdownMenuItem
             key={b.id}
-            onSelect={() => {
-              router.push(`${target}?boardId=${encodeURIComponent(b.id)}`)
-            }}
+            disabled={isSwitching}
+            onSelect={() => pickBoard(b.id)}
             className="flex items-center gap-2"
           >
             <Check

@@ -28,14 +28,23 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const { boards } = await fetchDashboardBoardsSSR()
   if (boards.length === 0) redirect("/onboarding/board")
 
+  // Dogfood widget — embedded in every admin's dashboard so visiting
+  // signed-in users hit the SAME workspace's widget (the dogfood owner's),
+  // not their own. Their support messages land in the dogfood workspace's
+  // /dashboard/support inbox. Configured via NEXT_PUBLIC_DOGFOOD_BOARD_ID;
+  // unset → no widget rendered.
+  const dogfoodBoardId = process.env.NEXT_PUBLIC_DOGFOOD_BOARD_ID
+
   return (
     <>
       {children}
-      <script
-        src="http://localhost:3000/widget.js"
-        data-board-id="26b6823b-157d-4eb7-b2c3-0a37c889a9c7"
-        async
-      ></script>
+      {dogfoodBoardId ? (
+        <script
+          src="http://localhost:3000/widget.js"
+          data-board-id={dogfoodBoardId}
+          async
+        ></script>
+      ) : null}
     </>
   )
 }
