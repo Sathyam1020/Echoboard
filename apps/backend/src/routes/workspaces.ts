@@ -49,9 +49,18 @@ const createBoardBody = z.object({
 
 function isUniqueViolation(err: unknown): boolean {
   if (!(err instanceof Error)) return false
-  const code = (err as { code?: string }).code
-  if (code === "23505") return true
-  return /duplicate key|unique constraint/i.test(err.message)
+  // Drizzle wraps the underlying NeonDbError as `cause`, and only the
+  // inner error reliably carries `code: '23505'`. Walk the chain so we
+  // match whether the consumer caught the raw driver error or the
+  // wrapped DrizzleQueryError.
+  let cur: unknown = err
+  while (cur instanceof Error) {
+    const code = (cur as { code?: string }).code
+    if (code === "23505") return true
+    if (/duplicate key|unique constraint/i.test(cur.message)) return true
+    cur = (cur as { cause?: unknown }).cause
+  }
+  return false
 }
 
 workspacesRouter.post(
