@@ -22,6 +22,19 @@ const envSchema = z.object({
   BETTER_AUTH_URL: z.string().url(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+
+  // Public URL of the web app — used to build accept-invite links.
+  APP_URL: z.string().url().default("http://localhost:3000"),
+
+  // HMAC secret for workspace invite tokens.
+  WORKSPACE_INVITE_SECRET: z
+    .string()
+    .min(32, "WORKSPACE_INVITE_SECRET must be at least 32 characters"),
+
+  // Resend transactional email. API key is optional in dev — when missing,
+  // emails are logged to stderr instead of sent.
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().email().default("onboarding@example.com"),
 })
 
 const parsed = envSchema.safeParse(process.env)

@@ -85,4 +85,11 @@ export const queryKeys = {
   widget: {
     config: (boardId: string) => ["widget", "config", boardId] as const,
   },
+
+  team: {
+    members: () => ["team", "members"] as const,
+    invites: () => ["team", "invites"] as const,
+    invitePreview: (token: string) =>
+      ["team", "invite-preview", token] as const,
+  },
 }

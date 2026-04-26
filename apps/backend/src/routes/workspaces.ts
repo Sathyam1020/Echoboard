@@ -1,8 +1,11 @@
-import { and, db, eq } from "@workspace/db/client"
-import { board, workspace } from "@workspace/db/schema"
+import { randomUUID } from "node:crypto"
+
+import { and, db, desc, eq } from "@workspace/db/client"
+import { board, workspace, workspaceMember } from "@workspace/db/schema"
 import { Router, type Request, type Response } from "express"
 import { z } from "zod"
 
+import { setActiveWorkspaceCookie } from "../lib/workspace-context.js"
 import { AppError } from "../middleware/error-handler.js"
 import { requireAuth } from "../middleware/require-auth.js"
 
@@ -74,11 +77,23 @@ workspacesRouter.post(
     const id = crypto.randomUUID()
 
     try {
-      await db.insert(workspace).values({
-        id,
-        name: parsed.data.name,
-        slug: parsed.data.slug,
-        ownerId: session.user.id,
+      // Workspace + owner-membership in one transaction so we never end up with a
+      // workspace whose creator can't access it (and no need for the legacy
+      // owner_id-only fallback path).
+      await db.transaction(async (tx) => {
+        await tx.insert(workspace).values({
+          id,
+          name: parsed.data.name,
+          slug: parsed.data.slug,
+          ownerId: session.user.id,
+        })
+        await tx.insert(workspaceMember).values({
+          id: randomUUID(),
+          workspaceId: id,
+          userId: session.user.id,
+          role: "owner",
+          addedByUserId: session.user.id,
+        })
       })
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -95,6 +110,7 @@ workspacesRouter.post(
       .from(workspace)
       .where(eq(workspace.id, id))
 
+    setActiveWorkspaceCookie(res, id)
     res.status(201).json({ workspace: row })
   },
 )
@@ -104,13 +120,75 @@ workspacesRouter.get(
   requireAuth,
   async (_req: Request, res: Response) => {
     const session = res.locals.session!
+    // Read every workspace this user is a member of (any role). The legacy
+    // single-owner relation is migrated into workspace_member, so this query
+    // covers both pre-existing solo workspaces and newly invited memberships.
     const rows = await db
-      .select()
-      .from(workspace)
-      .where(eq(workspace.ownerId, session.user.id))
-      .orderBy(workspace.createdAt)
+      .select({
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        ownerId: workspace.ownerId,
+        logoUrl: workspace.logoUrl,
+        publicBoardAuth: workspace.publicBoardAuth,
+        identifySecretKey: workspace.identifySecretKey,
+        requireSignedIdentify: workspace.requireSignedIdentify,
+        ssoRedirectUrl: workspace.ssoRedirectUrl,
+        ssoSharedSecret: workspace.ssoSharedSecret,
+        createdAt: workspace.createdAt,
+        updatedAt: workspace.updatedAt,
+        role: workspaceMember.role,
+        joinedAt: workspaceMember.createdAt,
+      })
+      .from(workspaceMember)
+      .innerJoin(workspace, eq(workspace.id, workspaceMember.workspaceId))
+      .where(eq(workspaceMember.userId, session.user.id))
+      .orderBy(desc(workspaceMember.createdAt))
 
     res.json({ workspaces: rows })
+  },
+)
+
+// Activate a workspace — sets the active_workspace_id cookie that scopes
+// every subsequent dashboard request. Membership is verified server-side
+// before the cookie is set.
+workspacesRouter.post(
+  "/:workspaceId/activate",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const session = res.locals.session!
+    const workspaceId = req.params.workspaceId
+    if (typeof workspaceId !== "string" || !workspaceId) {
+      throw new AppError("Invalid workspace id", {
+        status: 400,
+        code: "VALIDATION_ERROR",
+      })
+    }
+    const [row] = await db
+      .select({
+        id: workspace.id,
+        slug: workspace.slug,
+        name: workspace.name,
+        role: workspaceMember.role,
+      })
+      .from(workspaceMember)
+      .innerJoin(workspace, eq(workspace.id, workspaceMember.workspaceId))
+      .where(
+        and(
+          eq(workspaceMember.userId, session.user.id),
+          eq(workspaceMember.workspaceId, workspaceId),
+        ),
+      )
+    if (!row) {
+      throw new AppError("Not a workspace member", {
+        status: 403,
+        code: "FORBIDDEN",
+      })
+    }
+    setActiveWorkspaceCookie(res, workspaceId)
+    res.json({
+      workspace: { id: row.id, slug: row.slug, name: row.name, role: row.role },
+    })
   },
 )
 
@@ -153,7 +231,20 @@ workspacesRouter.post(
         code: "WORKSPACE_NOT_FOUND",
       })
     }
-    if (ws.ownerId !== session.user.id) {
+    // Any admin+ can create boards. Member-level can read but not mutate.
+    const [membership] = await db
+      .select({ role: workspaceMember.role })
+      .from(workspaceMember)
+      .where(
+        and(
+          eq(workspaceMember.userId, session.user.id),
+          eq(workspaceMember.workspaceId, ws.id),
+        ),
+      )
+    if (
+      !membership ||
+      (membership.role !== "owner" && membership.role !== "admin")
+    ) {
       throw new AppError("Not authorized to create boards in this workspace", {
         status: 403,
         code: "FORBIDDEN",

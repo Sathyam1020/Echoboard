@@ -1,7 +1,17 @@
 import { httpClient } from "@/lib/http/axios-client"
 
+export type WorkspaceRole = "owner" | "admin" | "member"
+
+export type WorkspaceMeRow = {
+  id: string
+  name: string
+  slug: string
+  ownerId: string
+  role: WorkspaceRole
+}
+
 export type WorkspaceMe = {
-  workspaces: { id: string; name: string; slug: string; ownerId: string }[]
+  workspaces: WorkspaceMeRow[]
 }
 
 export type WorkspaceSettings = {
@@ -56,5 +66,14 @@ export async function createWorkspace(body: { name: string; slug: string }): Pro
   const { data } = await httpClient.post<{
     workspace: { id: string; name: string; slug: string; ownerId: string }
   }>("/api/workspaces", body)
+  return data
+}
+
+export async function activateWorkspace(workspaceId: string): Promise<{
+  workspace: { id: string; slug: string; name: string; role: WorkspaceRole }
+}> {
+  const { data } = await httpClient.post<{
+    workspace: { id: string; slug: string; name: string; role: WorkspaceRole }
+  }>(`/api/workspaces/${workspaceId}/activate`, {})
   return data
 }

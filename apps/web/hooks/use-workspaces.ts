@@ -11,6 +11,7 @@ function describeError(err: unknown, fallback: string): string {
   return fallback
 }
 import {
+  activateWorkspace,
   createWorkspace,
   fetchWorkspaceSettings,
   fetchWorkspacesMe,
@@ -76,5 +77,20 @@ export function useCreateWorkspaceMutation() {
     },
     onError: (err) =>
       toast.error(describeError(err, "Couldn't create the workspace")),
+  })
+}
+
+export function useActivateWorkspaceMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: activateWorkspace,
+    onSuccess: () => {
+      // Switching workspaces invalidates pretty much every dashboard query —
+      // the new workspace has its own boards, conversations, members. Clear
+      // the cache and let consumers refetch.
+      qc.clear()
+    },
+    onError: (err) =>
+      toast.error(describeError(err, "Couldn't switch workspace")),
   })
 }

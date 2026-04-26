@@ -13,6 +13,7 @@ import {
   VISITOR_COOKIE_NAME,
   visitorCookieOptions,
 } from "../lib/visitor-session.js"
+import { getMemberRole, isAtLeastRole } from "../lib/workspace-context.js"
 import { AppError } from "../middleware/error-handler.js"
 import { requireAuth } from "../middleware/require-auth.js"
 import {
@@ -201,10 +202,11 @@ visitorsRouter.post(
     const ws = await loadWorkspace(parsed.data.workspaceId)
     const session = res.locals.session!
 
-    // Workspace owner stays in the admin lane — they don't need a visitor
-    // identity on their own board. Frontend short-circuits the modal flow
-    // for owners based on this `isOwner: true` reply.
-    if (ws.ownerId === session.user.id) {
+    // Workspace admins (owner OR admin role) stay in the admin lane —
+    // they don't need a visitor identity on their own board. Frontend
+    // short-circuits the modal flow when `isOwner: true`.
+    const adminRole = await getMemberRole(session.user.id, ws.id)
+    if (isAtLeastRole(adminRole, "admin")) {
       res.json({ visitor: null, isOwner: true })
       return
     }

@@ -28,16 +28,22 @@ import {
   PAGE_SIZE,
   type ChangelogCursor,
 } from "../lib/cursor.js"
+import {
+  assertCanMutateWorkspace,
+  getActiveWorkspace,
+} from "../lib/workspace-context.js"
 import { AppError } from "../middleware/error-handler.js"
 import { requireAuth } from "../middleware/require-auth.js"
 
 export const changelogRouter: Router = Router()
 
-async function loadOwnedEntry(entryId: string, userId: string) {
+// Loads the changelog entry + verifies the requester is admin+ of its
+// workspace. Renamed from loadOwnedEntry — same purpose, role-aware now.
+async function loadEntryWithMutatePerm(entryId: string, userId: string) {
   const [row] = await db
     .select({
       entry: changelogEntry,
-      workspaceOwnerId: workspace.ownerId,
+      workspaceId: workspace.id,
     })
     .from(changelogEntry)
     .innerJoin(workspace, eq(changelogEntry.workspaceId, workspace.id))
@@ -49,23 +55,27 @@ async function loadOwnedEntry(entryId: string, userId: string) {
       code: "ENTRY_NOT_FOUND",
     })
   }
-  if (row.workspaceOwnerId !== userId) {
-    throw new AppError("Only workspace owner can manage this entry", {
-      status: 403,
-      code: "FORBIDDEN",
-    })
-  }
+  await assertCanMutateWorkspace(userId, row.workspaceId)
   return row
 }
 
-async function loadFirstOwnedWorkspace(userId: string) {
+// Resolves "the workspace the admin is currently working in" via the
+// active_workspace_id cookie + workspace_member. Replaces the legacy
+// "first owned workspace" lookup so admins can switch workspaces.
+async function loadActiveAdminWorkspace(req: Request) {
+  const ctx = await getActiveWorkspace(req)
+  if (!ctx) {
+    throw new AppError("No workspace found for this user", {
+      status: 404,
+      code: "WORKSPACE_NOT_FOUND",
+    })
+  }
   const [ws] = await db
     .select()
     .from(workspace)
-    .where(eq(workspace.ownerId, userId))
-    .orderBy(workspace.createdAt)
+    .where(eq(workspace.id, ctx.workspace.id))
   if (!ws) {
-    throw new AppError("No workspace found for this user", {
+    throw new AppError("Workspace not found", {
       status: 404,
       code: "WORKSPACE_NOT_FOUND",
     })
@@ -91,7 +101,7 @@ function serializeEntry(e: typeof changelogEntry.$inferSelect) {
 // where effective_date = COALESCE(publishedAt, createdAt).
 changelogRouter.get("/", requireAuth, async (req: Request, res: Response) => {
   const session = res.locals.session!
-  const ws = await loadFirstOwnedWorkspace(session.user.id)
+  const ws = await loadActiveAdminWorkspace(req)
 
   const cursor = decodeCursor(
     typeof req.query.cursor === "string" ? req.query.cursor : null,
@@ -324,7 +334,7 @@ changelogRouter.get(
       throw new AppError("Invalid id", { status: 400, code: "VALIDATION_ERROR" })
     }
     const session = res.locals.session!
-    const row = await loadOwnedEntry(id, session.user.id)
+    const row = await loadEntryWithMutatePerm(id, session.user.id)
 
     const linked = await db
       .select({
@@ -361,7 +371,7 @@ changelogRouter.post("/", requireAuth, async (req: Request, res: Response) => {
   }
 
   const session = res.locals.session!
-  const ws = await loadFirstOwnedWorkspace(session.user.id)
+  const ws = await loadActiveAdminWorkspace(req)
   const id = crypto.randomUUID()
 
   await db.insert(changelogEntry).values({
@@ -451,7 +461,7 @@ changelogRouter.patch(
     }
 
     const session = res.locals.session!
-    const row = await loadOwnedEntry(id, session.user.id)
+    const row = await loadEntryWithMutatePerm(id, session.user.id)
 
     const patch: Record<string, unknown> = { updatedAt: sql`now()` }
     if (parsed.data.title !== undefined) patch.title = parsed.data.title
@@ -494,7 +504,7 @@ changelogRouter.patch(
     }
 
     const session = res.locals.session!
-    await loadOwnedEntry(id, session.user.id)
+    await loadEntryWithMutatePerm(id, session.user.id)
 
     const [updated] = await db
       .update(changelogEntry)
@@ -518,7 +528,7 @@ changelogRouter.delete(
       throw new AppError("Invalid id", { status: 400, code: "VALIDATION_ERROR" })
     }
     const session = res.locals.session!
-    await loadOwnedEntry(id, session.user.id)
+    await loadEntryWithMutatePerm(id, session.user.id)
     await db.delete(changelogEntry).where(eq(changelogEntry.id, id))
     res.json({ ok: true })
   },
@@ -530,7 +540,7 @@ changelogRouter.get(
   requireAuth,
   async (req: Request, res: Response) => {
     const session = res.locals.session!
-    const ws = await loadFirstOwnedWorkspace(session.user.id)
+    const ws = await loadActiveAdminWorkspace(req)
     const rawQ = typeof req.query.q === "string" ? req.query.q.trim() : ""
     const q = rawQ.length > 0 ? `%${rawQ}%` : null
 

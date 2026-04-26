@@ -22,6 +22,11 @@ import {
   serializeComment,
   type CommentRow,
 } from "../lib/serialize-comment.js"
+import {
+  assertCanMutateWorkspace,
+  getMemberRole,
+  isAtLeastRole,
+} from "../lib/workspace-context.js"
 import { AppError } from "../middleware/error-handler.js"
 import { requireAnyAuth } from "../middleware/require-any-auth.js"
 import { requireAuth } from "../middleware/require-auth.js"
@@ -34,6 +39,7 @@ async function loadPostWithOwnership(postId: string) {
   const [row] = await db
     .select({
       post: post,
+      workspaceId: workspace.id,
       workspaceOwnerId: workspace.ownerId,
       boardId: post.boardId,
     })
@@ -49,17 +55,6 @@ async function loadPostWithOwnership(postId: string) {
     })
   }
   return row
-}
-
-// Guard: only the workspace owner can run this mutation.
-function assertIsWorkspaceOwner(
-  workspaceOwnerId: string,
-  userId: string,
-  message = "Only workspace owner can perform this action",
-): void {
-  if (workspaceOwnerId !== userId) {
-    throw new AppError(message, { status: 403, code: "FORBIDDEN" })
-  }
 }
 
 postsRouter.get("/:postId", async (req: Request, res: Response) => {
@@ -102,9 +97,12 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
   }
 
   // viewerIsOwner is admin-only — visitor identity never makes you an admin.
-  // Derive from the actor we already have instead of a second lookup.
+  // With multi-admin, "owner" semantically means "admin+ in workspace_member."
   const userId = actor.kind === "user" ? actor.userId : null
-  const viewerIsOwner = userId !== null && userId === row.workspace.ownerId
+  const viewerRole = userId
+    ? await getMemberRole(userId, row.workspace.id)
+    : null
+  const viewerIsOwner = isAtLeastRole(viewerRole, "admin")
 
   // Now fan out the rest: comments, vote count, optional vote-by-actor lookup,
   // optional voter list (admin only), optional mergedInto target (rare).
@@ -344,11 +342,7 @@ postsRouter.patch(
 
     const row = await loadPostWithOwnership(postId)
     const userId = res.locals.session!.user.id
-    assertIsWorkspaceOwner(
-      row.workspaceOwnerId,
-      userId,
-      "Only workspace owner can change status",
-    )
+    await assertCanMutateWorkspace(userId, row.workspaceId)
 
     const [updated] = await db
       .update(post)
@@ -406,11 +400,7 @@ postsRouter.patch(
 
     const row = await loadPostWithOwnership(postId)
     const userId = res.locals.session!.user.id
-    assertIsWorkspaceOwner(
-      row.workspaceOwnerId,
-      userId,
-      "Only workspace owner can edit this post",
-    )
+    await assertCanMutateWorkspace(userId, row.workspaceId)
 
     const patch: Record<string, unknown> = { updatedAt: sql`now()` }
     if (parsed.data.title !== undefined) patch.title = parsed.data.title
@@ -452,11 +442,7 @@ postsRouter.delete(
 
     const row = await loadPostWithOwnership(postId)
     const userId = res.locals.session!.user.id
-    assertIsWorkspaceOwner(
-      row.workspaceOwnerId,
-      userId,
-      "Only workspace owner can delete this post",
-    )
+    await assertCanMutateWorkspace(userId, row.workspaceId)
 
     // FK cascades handle votes + comments. Any post that had `merged_into = this`
     // falls back to null via ON DELETE SET NULL.
@@ -490,11 +476,7 @@ postsRouter.patch(
 
     const row = await loadPostWithOwnership(postId)
     const userId = res.locals.session!.user.id
-    assertIsWorkspaceOwner(
-      row.workspaceOwnerId,
-      userId,
-      "Only workspace owner can pin posts",
-    )
+    await assertCanMutateWorkspace(userId, row.workspaceId)
 
     const [updated] = await db
       .update(post)
@@ -555,11 +537,7 @@ postsRouter.post(
 
     const source = await loadPostWithOwnership(sourceId)
     const userId = res.locals.session!.user.id
-    assertIsWorkspaceOwner(
-      source.workspaceOwnerId,
-      userId,
-      "Only workspace owner can merge posts",
-    )
+    await assertCanMutateWorkspace(userId, source.workspaceId)
 
     if (source.post.mergedIntoPostId) {
       throw new AppError("Source post is already merged", {
