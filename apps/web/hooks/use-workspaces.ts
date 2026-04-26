@@ -90,7 +90,8 @@ export function useActivateWorkspaceMutation() {
       // the cache and let consumers refetch.
       qc.clear()
     },
-    onError: (err) =>
-      toast.error(describeError(err, "Couldn't switch workspace")),
+    // No toast here — the consumer (workspace switcher) owns the
+    // loading→success/error toast lifecycle so it can swap a single
+    // toast id rather than firing two unrelated ones.
   })
 }
