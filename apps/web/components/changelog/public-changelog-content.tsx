@@ -9,6 +9,7 @@ import { ProductActivityCard } from "@/components/changelog/product-activity-car
 import { PublicChangelog } from "@/components/changelog/public-changelog"
 import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
 import { PageEnter } from "@/components/common/page-enter"
+import { ChangelogEntrySkeletonList } from "@/components/skeletons/changelog-entry-skeleton"
 import { useBoardBySlugQuery } from "@/hooks/queries/use-board-by-slug"
 import {
   usePublicChangelogEntriesInfiniteQuery,
@@ -64,17 +65,24 @@ export function PublicChangelogContent({
               </p>
             </header>
 
-            <PublicChangelog
-              entries={entries}
-              workspaceSlug={changelog.data.workspace.slug}
-              boardSlug={board.data.board.slug}
-            />
-
-            <InfiniteScrollSentinel
-              hasNextPage={entriesQuery.hasNextPage ?? false}
-              isFetchingNextPage={entriesQuery.isFetchingNextPage}
-              onLoadMore={() => entriesQuery.fetchNextPage()}
-            />
+            {entriesQuery.isPending && !entriesQuery.data ? (
+              <ChangelogEntrySkeletonList />
+            ) : (
+              <>
+                <PublicChangelog
+                  entries={entries}
+                  workspaceSlug={changelog.data.workspace.slug}
+                  boardSlug={board.data.board.slug}
+                />
+                {entries.length > 0 ? (
+                  <InfiniteScrollSentinel
+                    hasNextPage={entriesQuery.hasNextPage ?? false}
+                    isFetchingNextPage={entriesQuery.isFetchingNextPage}
+                    onLoadMore={() => entriesQuery.fetchNextPage()}
+                  />
+                ) : null}
+              </>
+            )}
           </main>
         </div>
       </PageEnter>

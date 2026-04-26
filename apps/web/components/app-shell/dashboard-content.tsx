@@ -1,14 +1,19 @@
 "use client"
 
 import { Button } from "@workspace/ui/components/button"
-import { FileText, Map, Plus, Upload } from "lucide-react"
+import { FileText, Inbox, Layers, Map, Plus, Upload } from "lucide-react"
 import Link from "next/link"
 
 import { AdminPageShell } from "@/components/app-shell/admin-page-shell"
 import { AppTopbar } from "@/components/app-shell/app-topbar"
 import { MetricCard } from "@/components/app-shell/metric-card"
 import { SectionCard } from "@/components/app-shell/section-card"
-import { useDashboardBoardsQuery, useRecentPostsQuery } from "@/hooks/use-dashboard"
+import { EmptyHint } from "@/components/common/empty-hint"
+import { RecentPostRowSkeletonList } from "@/components/skeletons/dashboard-skeletons"
+import {
+  useDashboardBoardsQuery,
+  useRecentPostsQuery,
+} from "@/hooks/use-dashboard"
 import { authClient } from "@/lib/auth-client"
 import type { DashboardBoard, RecentPost } from "@/services/dashboard"
 
@@ -35,12 +40,14 @@ export function DashboardContent() {
   const recentQuery = useRecentPostsQuery()
   const { data: session } = authClient.useSession()
 
-  if (!boardsQuery.data || !recentQuery.data || !session) return null
+  if (!session) return null
 
-  const { boards } = boardsQuery.data
-  const { posts: recentPosts } = recentQuery.data
+  const boards = boardsQuery.data?.boards ?? []
+  const recentPosts = recentQuery.data?.posts ?? []
   const firstBoard = boards[0]
   const totalPosts = boards.reduce((acc, b) => acc + b.postCount, 0)
+  const recentLoading = recentQuery.isPending && !recentQuery.data
+  const boardsLoading = boardsQuery.isPending && !boardsQuery.data
 
   return (
     <AdminPageShell activeItem="dashboard">
@@ -69,12 +76,42 @@ export function DashboardContent() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
           <SectionCard title="Recent posts" flush>
-            <RecentPostsList posts={recentPosts} />
+            {recentLoading ? (
+              <div className="px-4">
+                <RecentPostRowSkeletonList />
+              </div>
+            ) : (
+              <RecentPostsList posts={recentPosts} />
+            )}
           </SectionCard>
 
           <div className="flex flex-col gap-4">
             <SectionCard title="Your boards">
-              <YourBoardsList boards={boards} />
+              {boardsLoading ? (
+                <div className="space-y-1.5">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-9 rounded-lg bg-muted/50 motion-safe:animate-pulse"
+                      aria-hidden
+                    />
+                  ))}
+                </div>
+              ) : boards.length === 0 ? (
+                <EmptyHint
+                  variant="inline"
+                  icon={Layers}
+                  title="No boards yet"
+                  description="Create one to start collecting feedback."
+                  action={
+                    <Button asChild size="sm">
+                      <Link href="/onboarding/board">Create board</Link>
+                    </Button>
+                  }
+                />
+              ) : (
+                <YourBoardsList boards={boards} />
+              )}
             </SectionCard>
             <SectionCard title="Quick actions">
               <QuickActions firstBoard={firstBoard} />
@@ -89,9 +126,14 @@ export function DashboardContent() {
 function RecentPostsList({ posts }: { posts: RecentPost[] }) {
   if (posts.length === 0) {
     return (
-      <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-        No posts yet.
-      </p>
+      <div className="px-4">
+        <EmptyHint
+          variant="inline"
+          icon={Inbox}
+          title="Nothing here yet"
+          description="When users submit feedback, the latest activity will land here."
+        />
+      </div>
     )
   }
 

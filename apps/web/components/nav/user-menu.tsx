@@ -10,6 +10,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
 
@@ -48,8 +49,12 @@ export function UserMenu({
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
+          toast.success("Signed out")
           router.push("/")
           router.refresh()
+        },
+        onError: () => {
+          toast.error("Couldn't sign you out")
         },
       },
     })

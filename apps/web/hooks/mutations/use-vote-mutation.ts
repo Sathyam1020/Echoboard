@@ -1,8 +1,10 @@
 "use client"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 import type { PostRow } from "@/components/boards/types"
+import { ApiError } from "@/lib/http/api-error"
 import type { PostsPage } from "@/services/boards"
 import { toggleVote, type VoteResult } from "@/services/votes"
 
@@ -59,11 +61,17 @@ export function useVoteMutation(args: { postId: string }) {
       }))
     },
 
-    onError: () => {
+    onError: (err) => {
       // Server rejected — re-fetch to pull the authoritative state.
       // Cheaper to invalidate than to track the pre-mutation snapshot
       // across N pages.
       void qc.invalidateQueries({ queryKey: ["boards"] })
+      // No success toast for votes (too frequent / silent UX), but
+      // surface any server error so the user knows their optimistic
+      // flip reverted and why.
+      toast.error(
+        err instanceof ApiError ? err.message : "Couldn't update your vote",
+      )
     },
 
     onSuccess: (result: VoteResult) => {

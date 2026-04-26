@@ -4,7 +4,12 @@ function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="skeleton"
-      className={cn("animate-pulse rounded-md bg-muted", className)}
+      // `motion-safe:` gating so users with reduced-motion get a still
+      // placeholder rather than a pulsing distraction.
+      className={cn(
+        "rounded-md bg-muted motion-safe:animate-pulse",
+        className,
+      )}
       {...props}
     />
   )

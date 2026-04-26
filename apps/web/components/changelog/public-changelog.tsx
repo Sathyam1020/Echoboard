@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react"
+import { Package } from "lucide-react"
 
 import { EmptyHint } from "@/components/common/empty-hint"
 
@@ -18,9 +18,9 @@ export function PublicChangelog({
   if (entries.length === 0) {
     return (
       <EmptyHint
-        icon={Sparkles}
-        title="No changelog entries yet"
-        description="Check back soon — we'll post updates here as they ship."
+        icon={Package}
+        title="No updates shipped yet"
+        description="When the team ships something, it'll land here. Check back soon."
       />
     )
   }

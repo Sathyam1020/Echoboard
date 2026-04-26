@@ -1,7 +1,9 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
+import { ApiError } from "@/lib/http/api-error"
 import { queryKeys } from "@/lib/query/keys"
 import {
   bridgeVisitorFromSession,
@@ -20,6 +22,12 @@ export function useVisitorMeQuery(opts: { enabled?: boolean } = {}) {
   })
 }
 
+// Visitor identity mutations are mostly silent — they happen in the
+// background as part of larger flows (post a comment, vote on a post).
+// The flow that triggered them shows its own success toast, so we
+// don't double up here. We do surface failures, since those would
+// otherwise feel like a no-op from the user's perspective.
+
 export function useCreateGuestVisitorMutation() {
   const qc = useQueryClient()
   return useMutation({
@@ -27,6 +35,10 @@ export function useCreateGuestVisitorMutation() {
     onSuccess: (res) => {
       qc.setQueryData(queryKeys.visitors.me(), { visitor: res.visitor })
     },
+    onError: (err) =>
+      toast.error(
+        err instanceof ApiError ? err.message : "Couldn't sign you in",
+      ),
   })
 }
 
@@ -37,6 +49,10 @@ export function useIdentifyVisitorMutation() {
     onSuccess: (res) => {
       qc.setQueryData(queryKeys.visitors.me(), { visitor: res.visitor })
     },
+    onError: (err) =>
+      toast.error(
+        err instanceof ApiError ? err.message : "Couldn't save your details",
+      ),
   })
 }
 
@@ -47,6 +63,10 @@ export function useBridgeVisitorFromSessionMutation() {
     onSuccess: (res) => {
       qc.setQueryData(queryKeys.visitors.me(), { visitor: res.visitor })
     },
+    onError: (err) =>
+      toast.error(
+        err instanceof ApiError ? err.message : "Couldn't link your account",
+      ),
   })
 }
 
@@ -57,6 +77,11 @@ export function useSignOutVisitorMutation() {
     onSuccess: () => {
       qc.setQueryData(queryKeys.visitors.me(), { visitor: null })
       qc.invalidateQueries({ queryKey: queryKeys.visitors.me() })
+      toast.success("Signed out")
     },
+    onError: (err) =>
+      toast.error(
+        err instanceof ApiError ? err.message : "Couldn't sign you out",
+      ),
   })
 }

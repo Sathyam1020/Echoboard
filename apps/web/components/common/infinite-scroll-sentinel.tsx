@@ -62,7 +62,10 @@ export function InfiniteScrollSentinel({
     >
       {isFetchingNextPage ? (
         <span className="inline-flex items-center gap-2">
-          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+          <Loader2
+            className="size-3.5 motion-safe:animate-spin"
+            aria-hidden
+          />
           Loading more…
         </span>
       ) : (

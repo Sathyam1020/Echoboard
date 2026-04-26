@@ -1,14 +1,21 @@
 "use client"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 import type { CommentRow, CommentsPage } from "@/components/boards/types"
+import { ApiError } from "@/lib/http/api-error"
 import { queryKeys } from "@/lib/query/keys"
 import {
   createComment,
   deleteComment,
   updateComment,
 } from "@/services/comments"
+
+function describeError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.message
+  return fallback
+}
 
 // Comments live in a `useInfiniteQuery` cache: `{ pages: [{ comments,
 // nextCursor }, ...] }`. New comments append to the last page; updates
@@ -74,6 +81,10 @@ export function useCreateCommentMutation(postId: string) {
           }
         },
       )
+      toast.success("Comment posted")
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't post the comment"))
     },
   })
 }
@@ -93,6 +104,10 @@ export function useUpdateCommentMutation(postId: string) {
           )
         },
       )
+      toast.success("Comment updated")
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't update the comment"))
     },
   })
 }
@@ -114,6 +129,10 @@ export function useDeleteCommentMutation(postId: string) {
           )
         },
       )
+      toast.success("Comment deleted")
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't delete the comment"))
     },
   })
 }

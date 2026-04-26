@@ -1,8 +1,15 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
+import { ApiError } from "@/lib/http/api-error"
 import { queryKeys } from "@/lib/query/keys"
+
+function describeError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.message
+  return fallback
+}
 import {
   createChangelogEntry,
   deleteChangelogEntry,
@@ -49,7 +56,12 @@ export function useCreateChangelogMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: createChangelogEntry,
-    onSuccess: () => invalidateChangelogSurfaces(qc),
+    onSuccess: () => {
+      invalidateChangelogSurfaces(qc)
+      toast.success("Draft created")
+    },
+    onError: (err) =>
+      toast.error(describeError(err, "Couldn't create the entry")),
   })
 }
 
@@ -58,7 +70,12 @@ export function useUpdateChangelogMutation(entryId: string) {
   return useMutation({
     mutationFn: (body: { title?: string; body?: string; postIds?: string[] }) =>
       updateChangelogEntry(entryId, body),
-    onSuccess: () => invalidateChangelogSurfaces(qc, entryId),
+    onSuccess: () => {
+      invalidateChangelogSurfaces(qc, entryId)
+      toast.success("Changes saved")
+    },
+    onError: (err) =>
+      toast.error(describeError(err, "Couldn't save the entry")),
   })
 }
 
@@ -66,7 +83,16 @@ export function usePublishChangelogMutation(entryId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (published: boolean) => publishChangelogEntry(entryId, { published }),
-    onSuccess: () => invalidateChangelogSurfaces(qc, entryId),
+    onSuccess: (_data, published) => {
+      invalidateChangelogSurfaces(qc, entryId)
+      toast.success(
+        published
+          ? "Entry published"
+          : "Entry moved back to draft",
+      )
+    },
+    onError: (err) =>
+      toast.error(describeError(err, "Couldn't update publish status")),
   })
 }
 
@@ -74,7 +100,12 @@ export function useDeleteChangelogMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (entryId: string) => deleteChangelogEntry(entryId),
-    onSuccess: () => invalidateChangelogSurfaces(qc),
+    onSuccess: () => {
+      invalidateChangelogSurfaces(qc)
+      toast.success("Entry deleted")
+    },
+    onError: (err) =>
+      toast.error(describeError(err, "Couldn't delete the entry")),
   })
 }
 
@@ -82,7 +113,16 @@ export function useLinkChangelogPostsMutation(entryId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (postIds: string[]) => linkChangelogPosts(entryId, { postIds }),
-    onSuccess: () => invalidateChangelogSurfaces(qc, entryId),
+    onSuccess: (_data, postIds) => {
+      invalidateChangelogSurfaces(qc, entryId)
+      toast.success(
+        postIds.length === 1
+          ? "Post linked to entry"
+          : `${postIds.length} posts linked to entry`,
+      )
+    },
+    onError: (err) =>
+      toast.error(describeError(err, "Couldn't link posts")),
   })
 }
 
@@ -90,6 +130,11 @@ export function useUnlinkChangelogPostMutation(entryId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (postId: string) => unlinkChangelogPost(entryId, postId),
-    onSuccess: () => invalidateChangelogSurfaces(qc, entryId),
+    onSuccess: () => {
+      invalidateChangelogSurfaces(qc, entryId)
+      toast.success("Post unlinked")
+    },
+    onError: (err) =>
+      toast.error(describeError(err, "Couldn't unlink the post")),
   })
 }

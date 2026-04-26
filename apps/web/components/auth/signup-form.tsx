@@ -8,6 +8,7 @@ import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
+import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
 
@@ -32,9 +33,12 @@ export function SignupForm() {
         callbackURL: "/dashboard",
       })
       if (res.error) {
-        setError(res.error.message ?? "Unable to create account.")
+        const msg = res.error.message ?? "Unable to create account."
+        setError(msg)
+        toast.error(msg)
         return
       }
+      toast.success("Account created — welcome aboard")
       router.push("/dashboard")
       router.refresh()
     })

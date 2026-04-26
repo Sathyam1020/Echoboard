@@ -1,10 +1,11 @@
 "use client"
 
-import { MessageSquare } from "lucide-react"
+import { MessageSquareDashed } from "lucide-react"
 import { useMemo } from "react"
 
 import { EmptyHint } from "@/components/common/empty-hint"
 import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
+import { CommentSkeletonList } from "@/components/skeletons/comment-skeleton"
 import { usePostCommentsInfiniteQuery } from "@/hooks/queries/use-post-comments"
 
 import type { CommentRow } from "../boards/types"
@@ -87,10 +88,12 @@ export function CommentList({
         onSuccess={noop}
       />
 
-      {tree.length === 0 ? (
+      {query.isPending && !query.data ? (
+        <CommentSkeletonList />
+      ) : tree.length === 0 ? (
         <EmptyHint
           variant="soft"
-          icon={MessageSquare}
+          icon={MessageSquareDashed}
           title="No comments yet"
           description="Be the first to share your thoughts."
         />

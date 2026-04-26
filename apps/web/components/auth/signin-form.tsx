@@ -7,6 +7,7 @@ import { Label } from "@workspace/ui/components/label"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useTransition } from "react"
+import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
 
@@ -31,9 +32,12 @@ export function SigninForm() {
         callbackURL: redirectTo,
       })
       if (res.error) {
-        setError(res.error.message ?? "Unable to sign in.")
+        const msg = res.error.message ?? "Unable to sign in."
+        setError(msg)
+        toast.error(msg)
         return
       }
+      toast.success("Signed in")
       router.push(redirectTo)
       router.refresh()
     })

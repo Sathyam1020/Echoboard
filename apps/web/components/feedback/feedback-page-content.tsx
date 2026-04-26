@@ -1,16 +1,18 @@
 "use client"
 
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, Inbox } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useMemo } from "react"
 
 import { AdminPageShell } from "@/components/app-shell/admin-page-shell"
 import { AppTopbar } from "@/components/app-shell/app-topbar"
+import { EmptyHint } from "@/components/common/empty-hint"
+import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
 import { FeedbackBoardSwitcher } from "@/components/feedback/feedback-board-switcher"
 import { FeedbackList } from "@/components/feedback/feedback-list"
 import { NewPostDialog } from "@/components/feedback/new-post-dialog"
-import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
+import { PostCardSkeletonList } from "@/components/skeletons/post-card-skeleton"
 import {
   useAdminPostsByBoardInfiniteQuery,
   useDashboardBoardsQuery,
@@ -36,10 +38,12 @@ export function FeedbackPageContent() {
     [postsQuery.data],
   )
 
-  if (!boardsQuery.data || !activeBoard || !postsQuery.data) return null
+  if (!boardsQuery.data || !activeBoard) return null
 
   const totalVotes = posts.reduce((sum, p) => sum + p.voteCount, 0)
   const publicHref = `/${encodeURIComponent(activeBoard.workspaceSlug)}/${encodeURIComponent(activeBoard.boardSlug)}`
+  const isInitialLoading = postsQuery.isPending && !postsQuery.data
+  const isEmpty = !isInitialLoading && posts.length === 0
 
   return (
     <AdminPageShell activeItem="feedback">
@@ -86,12 +90,25 @@ export function FeedbackPageContent() {
       />
 
       <div className="flex flex-col gap-4 px-4 py-6 sm:px-8">
-        <FeedbackList posts={posts} />
-        <InfiniteScrollSentinel
-          hasNextPage={postsQuery.hasNextPage ?? false}
-          isFetchingNextPage={postsQuery.isFetchingNextPage}
-          onLoadMore={() => postsQuery.fetchNextPage()}
-        />
+        {isInitialLoading ? (
+          <PostCardSkeletonList />
+        ) : isEmpty ? (
+          <EmptyHint
+            icon={Inbox}
+            title={`No feedback in ${activeBoard.boardName}`}
+            description="Once users submit ideas to this board, they'll appear here."
+            action={<NewPostDialog boardId={activeBoard.boardId} />}
+          />
+        ) : (
+          <>
+            <FeedbackList posts={posts} />
+            <InfiniteScrollSentinel
+              hasNextPage={postsQuery.hasNextPage ?? false}
+              isFetchingNextPage={postsQuery.isFetchingNextPage}
+              onLoadMore={() => postsQuery.fetchNextPage()}
+            />
+          </>
+        )}
       </div>
     </AdminPageShell>
   )

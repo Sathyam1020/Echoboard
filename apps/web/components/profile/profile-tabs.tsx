@@ -21,11 +21,15 @@ export function ProfileTabs({
   workspaceId,
   workspaceOwnerId,
   actorId,
+  isSelf,
+  actorName,
 }: {
   workspaceSlug: string
   workspaceId: string
   workspaceOwnerId: string
   actorId: string
+  isSelf?: boolean
+  actorName: string
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -66,10 +70,17 @@ export function ProfileTabs({
           workspaceId={workspaceId}
           workspaceOwnerId={workspaceOwnerId}
           actorId={actorId}
+          isSelf={isSelf}
+          actorName={actorName}
         />
       </TabsContent>
       <TabsContent value="comments" className="mt-5">
-        <ProfileCommentList workspaceSlug={workspaceSlug} actorId={actorId} />
+        <ProfileCommentList
+          workspaceSlug={workspaceSlug}
+          actorId={actorId}
+          isSelf={isSelf}
+          actorName={actorName}
+        />
       </TabsContent>
     </Tabs>
   )

@@ -1,7 +1,9 @@
 "use client"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
+import { ApiError } from "@/lib/http/api-error"
 import { queryKeys } from "@/lib/query/keys"
 import {
   createAdminPost,
@@ -11,6 +13,13 @@ import {
   updatePost,
   updatePostStatus,
 } from "@/services/posts-admin"
+
+// Standard error-message resolver — pulls the server's human message
+// out of `ApiError` when present, falls back to a generic line.
+function describeError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.message
+  return fallback
+}
 
 // Catch-all invalidation: a post mutation can affect the dashboard boards
 // (post counts), the per-board feedback list, the public board cache,
@@ -50,6 +59,10 @@ export function useCreatePostMutation() {
         queryKey: ["boards", "by-slug"],
       })
       invalidatePostSurfaces(qc)
+      toast.success("Post submitted")
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't submit the post"))
     },
   })
 }
@@ -59,7 +72,13 @@ export function useUpdatePostMutation(postId: string) {
   return useMutation({
     mutationFn: (body: { title?: string; description?: string }) =>
       updatePost(postId, body),
-    onSuccess: () => invalidatePostSurfaces(qc, postId),
+    onSuccess: () => {
+      invalidatePostSurfaces(qc, postId)
+      toast.success("Post updated")
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't update the post"))
+    },
   })
 }
 
@@ -67,7 +86,13 @@ export function useDeletePostMutation(postId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => deletePost(postId),
-    onSuccess: () => invalidatePostSurfaces(qc, postId),
+    onSuccess: () => {
+      invalidatePostSurfaces(qc, postId)
+      toast.success("Post deleted")
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't delete the post"))
+    },
   })
 }
 
@@ -75,7 +100,13 @@ export function usePinPostMutation(postId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (pinned: boolean) => pinPost(postId, { pinned }),
-    onSuccess: () => invalidatePostSurfaces(qc, postId),
+    onSuccess: (_data, pinned) => {
+      invalidatePostSurfaces(qc, postId)
+      toast.success(pinned ? "Post pinned" : "Post unpinned")
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't update pin state"))
+    },
   })
 }
 
@@ -83,7 +114,13 @@ export function useUpdatePostStatusMutation(postId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (status: string) => updatePostStatus(postId, { status }),
-    onSuccess: () => invalidatePostSurfaces(qc, postId),
+    onSuccess: (_data, status) => {
+      invalidatePostSurfaces(qc, postId)
+      toast.success(`Status updated to ${status.replace(/-/g, " ")}`)
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't update status"))
+    },
   })
 }
 
@@ -91,6 +128,12 @@ export function useMergePostMutation(postId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (targetPostId: string) => mergePost(postId, { targetPostId }),
-    onSuccess: () => invalidatePostSurfaces(qc, postId),
+    onSuccess: () => {
+      invalidatePostSurfaces(qc, postId)
+      toast.success("Post merged")
+    },
+    onError: (err) => {
+      toast.error(describeError(err, "Couldn't merge the post"))
+    },
   })
 }

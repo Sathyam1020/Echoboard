@@ -4,6 +4,7 @@ import { Button } from "@workspace/ui/components/button"
 import { LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
+import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
 
@@ -17,7 +18,13 @@ export function SignOutButton({
 
   function onClick() {
     startTransition(async () => {
-      await authClient.signOut()
+      try {
+        await authClient.signOut()
+        toast.success("Signed out")
+      } catch {
+        toast.error("Couldn't sign you out")
+        return
+      }
       router.push("/")
       router.refresh()
     })

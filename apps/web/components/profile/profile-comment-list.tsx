@@ -1,6 +1,7 @@
 "use client"
 
-import { MessageSquare } from "lucide-react"
+import { Skeleton } from "@workspace/ui/components/skeleton"
+import { MessageSquareDashed } from "lucide-react"
 import Link from "next/link"
 import { useMemo } from "react"
 
@@ -17,9 +18,13 @@ import { formatRelativeTime } from "@/lib/relative-time"
 export function ProfileCommentList({
   workspaceSlug,
   actorId,
+  isSelf,
+  actorName,
 }: {
   workspaceSlug: string
   actorId: string
+  isSelf?: boolean
+  actorName: string
 }) {
   const query = useProfileCommentsInfiniteQuery({ workspaceSlug, actorId })
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = query
@@ -29,13 +34,41 @@ export function ProfileCommentList({
     [query.data],
   )
 
-  if (comments.length === 0 && !query.isLoading) {
+  const isInitialLoading = query.isPending && !query.data
+
+  if (isInitialLoading) {
+    return (
+      <div className="flex flex-col gap-3" aria-hidden>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <article
+            key={i}
+            className="space-y-2 rounded-xl border border-border bg-card p-5"
+          >
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-5/6" />
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="mt-2 h-3 w-40" />
+          </article>
+        ))}
+      </div>
+    )
+  }
+
+  if (comments.length === 0) {
     return (
       <EmptyHint
         variant="soft"
-        icon={MessageSquare}
-        title="No comments yet"
-        description="Replies and discussion this person leaves will show up here."
+        icon={MessageSquareDashed}
+        title={
+          isSelf
+            ? "You haven't commented yet"
+            : `${actorName} hasn't commented yet`
+        }
+        description={
+          isSelf
+            ? "Reply to a feedback post and your comments will collect here."
+            : "Replies and discussion they leave will show up here."
+        }
       />
     )
   }

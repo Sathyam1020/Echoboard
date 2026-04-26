@@ -22,7 +22,13 @@ export function Providers({ children }: { children: ReactNode }) {
         <StoreProvider>{children}</StoreProvider>
       </MotionConfig>
       <Toaster
-        position="bottom-right"
+        // Top-center so success / error feedback lands in the user's
+        // primary read zone (matches Linear, Vercel, GitHub conventions
+        // for action confirmations).
+        position="top-center"
+        // `richColors` swaps the default neutral toast for sonner's
+        // semantic palette: green-tinted success, red-tinted error,
+        // amber warning. No more black/white pills.
         richColors
         closeButton
         toastOptions={{

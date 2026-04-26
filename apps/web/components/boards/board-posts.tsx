@@ -1,10 +1,13 @@
 "use client"
 
+import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { Search } from "lucide-react"
+import { Inbox, Search, SearchX } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
+import { EmptyHint } from "@/components/common/empty-hint"
 import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
+import { PostCardSkeletonList } from "@/components/skeletons/post-card-skeleton"
 import { useBoardPostsInfiniteQuery } from "@/hooks/queries/use-board-posts"
 
 import { PostList } from "./post-list"
@@ -48,6 +51,14 @@ export function BoardPosts({
     [query.data],
   )
 
+  // Three branches we need to render:
+  //   1. Loading (cache cold + no data yet)         → skeleton list
+  //   2. Search active + no matches                  → search-empty state
+  //   3. No search + zero posts                      → board-empty state
+  // Default: render the actual post list.
+  const isInitialLoading = query.isPending && !query.data
+  const isEmpty = !isInitialLoading && posts.length === 0
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2.5">
@@ -72,19 +83,56 @@ export function BoardPosts({
 
       <SortPills value={sort} onChange={setSort} />
 
-      <PostList
-        posts={posts}
-        workspaceSlug={workspaceSlug}
-        boardSlug={boardSlug}
-        workspaceId={workspaceId}
-        workspaceOwnerId={workspaceOwnerId}
-      />
+      {isInitialLoading ? (
+        <PostCardSkeletonList />
+      ) : isEmpty ? (
+        debouncedSearch ? (
+          <EmptyHint
+            icon={SearchX}
+            title="No matching feedback"
+            description={
+              <>
+                Nothing turned up for{" "}
+                <span className="font-medium text-foreground">
+                  &ldquo;{debouncedSearch}&rdquo;
+                </span>
+                . Try a different keyword.
+              </>
+            }
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearch("")}
+              >
+                Clear search
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyHint
+            icon={Inbox}
+            title="Be the first to ask"
+            description="When someone submits a feature request to this board, it'll appear here."
+          />
+        )
+      ) : (
+        <PostList
+          posts={posts}
+          workspaceSlug={workspaceSlug}
+          boardSlug={boardSlug}
+          workspaceId={workspaceId}
+          workspaceOwnerId={workspaceOwnerId}
+        />
+      )}
 
-      <InfiniteScrollSentinel
-        hasNextPage={query.hasNextPage ?? false}
-        isFetchingNextPage={query.isFetchingNextPage}
-        onLoadMore={() => query.fetchNextPage()}
-      />
+      {!isInitialLoading && !isEmpty ? (
+        <InfiniteScrollSentinel
+          hasNextPage={query.hasNextPage ?? false}
+          isFetchingNextPage={query.isFetchingNextPage}
+          onLoadMore={() => query.fetchNextPage()}
+        />
+      ) : null}
     </div>
   )
 }

@@ -92,9 +92,9 @@ export function AdminRoadmap({
                 count={columnPosts.length}
               >
                 {columnPosts.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-[12px] text-muted-foreground">
+                  <div className="rounded-md border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground">
                     Drag posts here
-                  </p>
+                  </div>
                 ) : (
                   columnPosts.map((p) => (
                     <AdminDraggableCard

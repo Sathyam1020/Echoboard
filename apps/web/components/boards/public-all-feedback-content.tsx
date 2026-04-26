@@ -1,7 +1,8 @@
 "use client"
 
+import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { Search } from "lucide-react"
+import { Inbox, Layers, Search, SearchX } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import { BoardsListCard } from "@/components/boards/boards-list-card"
@@ -11,8 +12,10 @@ import { PublicSidebar } from "@/components/boards/public-sidebar"
 import { PublicTopBar } from "@/components/boards/public-top-bar"
 import { SortPills, type SortOption } from "@/components/boards/sort-pills"
 import type { PostRow } from "@/components/boards/types"
+import { EmptyHint } from "@/components/common/empty-hint"
 import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
 import { PageEnter } from "@/components/common/page-enter"
+import { PostCardSkeletonList } from "@/components/skeletons/post-card-skeleton"
 import {
   useAllFeedbackPostsInfiniteQuery,
   useAllFeedbackQuery,
@@ -107,18 +110,24 @@ export function PublicAllFeedbackContent({
                 />
               </div>
               <SortPills value={sort} onChange={setSort} />
-              <PostList
+              <AllFeedbackBody
+                isInitialLoading={
+                  postsQuery.isPending && !postsQuery.data
+                }
                 posts={posts}
-                workspaceSlug={meta.data.workspace.slug}
-                boardSlug=""
-                workspaceId={meta.data.workspace.id}
-                workspaceOwnerId={meta.data.workspace.ownerId}
+                workspace={meta.data.workspace}
+                hasBoards={meta.data.workspaceBoards.length > 0}
+                debouncedSearch={debouncedSearch}
+                clearSearch={() => setSearch("")}
               />
-              <InfiniteScrollSentinel
-                hasNextPage={postsQuery.hasNextPage ?? false}
-                isFetchingNextPage={postsQuery.isFetchingNextPage}
-                onLoadMore={() => postsQuery.fetchNextPage()}
-              />
+              {!(postsQuery.isPending && !postsQuery.data) &&
+              posts.length > 0 ? (
+                <InfiniteScrollSentinel
+                  hasNextPage={postsQuery.hasNextPage ?? false}
+                  isFetchingNextPage={postsQuery.isFetchingNextPage}
+                  onLoadMore={() => postsQuery.fetchNextPage()}
+                />
+              ) : null}
             </div>
           </main>
         </div>
@@ -126,5 +135,80 @@ export function PublicAllFeedbackContent({
 
       <PublicFooter />
     </div>
+  )
+}
+
+// Branches the main content area: skeleton while loading, search-empty
+// when search yields nothing, no-boards / no-feedback empties when
+// applicable, real list otherwise.
+function AllFeedbackBody({
+  isInitialLoading,
+  posts,
+  workspace,
+  hasBoards,
+  debouncedSearch,
+  clearSearch,
+}: {
+  isInitialLoading: boolean
+  posts: PostRow[]
+  workspace: { id: string; name: string; slug: string; ownerId: string }
+  hasBoards: boolean
+  debouncedSearch: string
+  clearSearch: () => void
+}) {
+  if (isInitialLoading) return <PostCardSkeletonList />
+
+  if (posts.length === 0) {
+    // Workspace has no public boards yet — no posts could exist.
+    // Surface that explicitly rather than rendering a generic
+    // "no feedback" message.
+    if (!hasBoards) {
+      return (
+        <EmptyHint
+          icon={Layers}
+          title="No public boards yet"
+          description="Once the team creates a public board, feedback submitted there will show up across this view."
+        />
+      )
+    }
+    if (debouncedSearch) {
+      return (
+        <EmptyHint
+          icon={SearchX}
+          title="No matching feedback"
+          description={
+            <>
+              Nothing turned up for{" "}
+              <span className="font-medium text-foreground">
+                &ldquo;{debouncedSearch}&rdquo;
+              </span>
+              . Try a different keyword.
+            </>
+          }
+          action={
+            <Button variant="outline" size="sm" onClick={clearSearch}>
+              Clear search
+            </Button>
+          }
+        />
+      )
+    }
+    return (
+      <EmptyHint
+        icon={Inbox}
+        title="No feedback yet"
+        description="When someone submits a feature request to any board, it'll surface here."
+      />
+    )
+  }
+
+  return (
+    <PostList
+      posts={posts}
+      workspaceSlug={workspace.slug}
+      boardSlug=""
+      workspaceId={workspace.id}
+      workspaceOwnerId={workspace.ownerId}
+    />
   )
 }

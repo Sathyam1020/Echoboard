@@ -326,6 +326,30 @@
   [data-mono] {
     @apply font-mono tabular-nums;
   }
+
+  /* ---- Interactive cursor defaults ----
+     The HTML <button> default is `cursor: default`, which feels broken
+     on click — almost everything in shadcn-land is a button under the
+     hood (Tabs, Dropdown, Accordion, Select, Sheet, etc.) and only a
+     handful of those primitives set their own cursor. Apply pointer to
+     every interactive role globally so we don't have to track it down
+     per-component. Disabled elements opt out via `:disabled` /
+     `aria-disabled` selectors below. */
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="menuitemcheckbox"]:not([aria-disabled="true"]),
+  [role="menuitemradio"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  [role="checkbox"]:not([aria-disabled="true"]),
+  [role="radio"]:not([aria-disabled="true"]),
+  summary:not([aria-disabled="true"]),
+  [data-slot="trigger"]:not([aria-disabled="true"]),
+  label[for] {
+    cursor: pointer;
+  }
 }
 
 @layer components {
@@ -441,6 +465,25 @@
   .empty-state-description {
     @apply max-w-[280px] text-xs text-muted-foreground/70;
   }
+}
+
+/* ---- Empty state + skeleton animation keyframes ----
+   Gentle, slow loops so they're calming — not distracting. Each is
+   gated by `motion-safe:` at the call site so users with reduced
+   motion don't see them. */
+@keyframes empty-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes empty-halo {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.18); opacity: 0.15; }
+}
+
+@keyframes empty-ring {
+  0% { transform: scale(1); opacity: 0.45; }
+  100% { transform: scale(1.6); opacity: 0; }
 }
 
 @layer utilities {
