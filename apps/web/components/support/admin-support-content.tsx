@@ -54,12 +54,12 @@ export function AdminSupportContent({
   }
 
   return (
-    <AdminPageShell activeItem="support">
+    <AdminPageShell activeItem="support" fullHeight>
       <AppTopbar
         title="Support"
         subtitle="Talk to customers in real time."
       />
-      <div className="flex h-[calc(100dvh-var(--topbar-h,108px))] min-h-0 border-t border-border">
+      <div className="flex flex-1 min-h-0 border-t border-border">
         <aside className="flex w-[340px] shrink-0 flex-col border-r border-border bg-card">
           <SearchBar value={search} onChange={setSearch} />
           {search ? (
