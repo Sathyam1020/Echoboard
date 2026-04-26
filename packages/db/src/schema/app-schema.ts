@@ -3,7 +3,9 @@ import {
   boolean,
   check,
   index,
+  integer,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -68,6 +70,9 @@ export const board = pgTable(
     widgetShowBranding: boolean("widget_show_branding")
       .default(true)
       .notNull(),
+    // When true, the embedded widget on this board exposes the Support
+    // tab. Defaults off so existing boards keep their current widget UX.
+    supportEnabled: boolean("support_enabled").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -409,3 +414,276 @@ export const changelogPostRelations = relations(changelogPost, ({ one }) => ({
     references: [post.id],
   }),
 }))
+
+// ── Team membership ────────────────────────────────────────────
+// Many-to-many between user and workspace. Replaces the single-owner
+// `workspace.ownerId` model. We keep `workspace.ownerId` for the
+// migration backfill; new code reads roles from `workspaceMember`.
+
+export const workspaceRole = pgEnum("workspace_role", [
+  "owner",
+  "admin",
+  "member",
+])
+
+export const workspaceMember = pgTable(
+  "workspace_member",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: workspaceRole("role").default("member").notNull(),
+    addedByUserId: text("added_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("workspace_member_workspaceId_userId_uq").on(
+      table.workspaceId,
+      table.userId,
+    ),
+    index("workspace_member_userId_idx").on(table.userId),
+  ],
+)
+
+export const workspaceInvite = pgTable(
+  "workspace_invite",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: workspaceRole("role").default("member").notNull(),
+    invitedByUserId: text("invited_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    // HMAC of (id, workspaceId, email) — verified at accept time.
+    tokenHash: text("token_hash").notNull(),
+    acceptedAt: timestamp("accepted_at"),
+    revokedAt: timestamp("revoked_at"),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    // Only one *open* invite per (workspace, email) at a time.
+    uniqueIndex("workspace_invite_open_uq")
+      .on(table.workspaceId, table.email)
+      .where(sql`${table.acceptedAt} is null and ${table.revokedAt} is null`),
+    index("workspace_invite_email_idx").on(table.email),
+  ],
+)
+
+export const workspaceMemberRelations = relations(
+  workspaceMember,
+  ({ one }) => ({
+    workspace: one(workspace, {
+      fields: [workspaceMember.workspaceId],
+      references: [workspace.id],
+    }),
+    user: one(user, {
+      fields: [workspaceMember.userId],
+      references: [user.id],
+    }),
+    addedBy: one(user, {
+      fields: [workspaceMember.addedByUserId],
+      references: [user.id],
+      relationName: "workspaceMemberAddedBy",
+    }),
+  }),
+)
+
+export const workspaceInviteRelations = relations(
+  workspaceInvite,
+  ({ one }) => ({
+    workspace: one(workspace, {
+      fields: [workspaceInvite.workspaceId],
+      references: [workspace.id],
+    }),
+    invitedBy: one(user, {
+      fields: [workspaceInvite.invitedByUserId],
+      references: [user.id],
+    }),
+  }),
+)
+
+// ── Support chat ───────────────────────────────────────────────
+// `conversation` = one customer ↔ workspace thread (lifelong, status-tracked).
+// `supportMessage` = individual messages, each authored by a user XOR a visitor.
+// `conversationAuditLog` = status / assignment audit trail.
+
+export const conversationStatus = pgEnum("conversation_status", [
+  "open",
+  "pending",
+  "resolved",
+])
+
+export const conversation = pgTable(
+  "conversation",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    // Customer XOR — exactly one of customerUserId / customerVisitorId is set.
+    customerUserId: text("customer_user_id").references(() => user.id, {
+      onDelete: "cascade",
+    }),
+    customerVisitorId: text("customer_visitor_id").references(
+      (): AnyPgColumn => visitor.id,
+      { onDelete: "cascade" },
+    ),
+    status: conversationStatus("status").default("open").notNull(),
+    assignedToUserId: text("assigned_to_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    unreadAdmin: integer("unread_admin").default(0).notNull(),
+    unreadCustomer: integer("unread_customer").default(0).notNull(),
+    lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "conversation_customer_xor",
+      sql`(${table.customerUserId} is not null and ${table.customerVisitorId} is null) or (${table.customerUserId} is null and ${table.customerVisitorId} is not null)`,
+    ),
+    // One open conversation per (workspace, customer) — partial unique
+    // for whichever side of the XOR is set.
+    uniqueIndex("conversation_workspaceId_customerUserId_uq")
+      .on(table.workspaceId, table.customerUserId)
+      .where(sql`${table.customerUserId} is not null`),
+    uniqueIndex("conversation_workspaceId_customerVisitorId_uq")
+      .on(table.workspaceId, table.customerVisitorId)
+      .where(sql`${table.customerVisitorId} is not null`),
+    index("conversation_workspaceId_status_lastMessageAt_idx").on(
+      table.workspaceId,
+      table.status,
+      table.lastMessageAt,
+    ),
+    index("conversation_assignedToUserId_idx").on(table.assignedToUserId),
+  ],
+)
+
+export const supportMessage = pgTable(
+  "support_message",
+  {
+    id: text("id").primaryKey(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id, { onDelete: "cascade" }),
+    // Author XOR — exactly one is set.
+    authorUserId: text("author_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    authorVisitorId: text("author_visitor_id").references(
+      (): AnyPgColumn => visitor.id,
+      { onDelete: "set null" },
+    ),
+    body: text("body").notNull(),
+    // Stamped when the recipient's mark-as-read endpoint passes this message id.
+    readAt: timestamp("read_at"),
+    deliveredAt: timestamp("delivered_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    // search_vector is a GENERATED tsvector column managed via raw SQL in the
+    // migration — drizzle-kit doesn't model GENERATED columns natively, so we
+    // intentionally omit it from the typed schema.
+  },
+  (table) => [
+    check(
+      "support_message_author_xor",
+      sql`(${table.authorUserId} is not null and ${table.authorVisitorId} is null) or (${table.authorUserId} is null and ${table.authorVisitorId} is not null)`,
+    ),
+    index("support_message_conversationId_createdAt_idx").on(
+      table.conversationId,
+      table.createdAt,
+    ),
+  ],
+)
+
+export const conversationAuditAction = pgEnum("conversation_audit_action", [
+  "status_change",
+  "assignment_change",
+])
+
+export const conversationAuditLog = pgTable(
+  "conversation_audit_log",
+  {
+    id: text("id").primaryKey(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id, { onDelete: "cascade" }),
+    action: conversationAuditAction("action").notNull(),
+    fromValue: text("from_value"),
+    toValue: text("to_value"),
+    actorUserId: text("actor_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("conversation_audit_log_conversationId_createdAt_idx").on(
+      table.conversationId,
+      table.createdAt,
+    ),
+  ],
+)
+
+export const conversationRelations = relations(
+  conversation,
+  ({ one, many }) => ({
+    workspace: one(workspace, {
+      fields: [conversation.workspaceId],
+      references: [workspace.id],
+    }),
+    customerUser: one(user, {
+      fields: [conversation.customerUserId],
+      references: [user.id],
+      relationName: "conversationCustomerUser",
+    }),
+    customerVisitor: one(visitor, {
+      fields: [conversation.customerVisitorId],
+      references: [visitor.id],
+    }),
+    assignedTo: one(user, {
+      fields: [conversation.assignedToUserId],
+      references: [user.id],
+      relationName: "conversationAssignedTo",
+    }),
+    messages: many(supportMessage),
+    auditLog: many(conversationAuditLog),
+  }),
+)
+
+export const supportMessageRelations = relations(supportMessage, ({ one }) => ({
+  conversation: one(conversation, {
+    fields: [supportMessage.conversationId],
+    references: [conversation.id],
+  }),
+  authorUser: one(user, {
+    fields: [supportMessage.authorUserId],
+    references: [user.id],
+  }),
+  authorVisitor: one(visitor, {
+    fields: [supportMessage.authorVisitorId],
+    references: [visitor.id],
+  }),
+}))
+
+export const conversationAuditLogRelations = relations(
+  conversationAuditLog,
+  ({ one }) => ({
+    conversation: one(conversation, {
+      fields: [conversationAuditLog.conversationId],
+      references: [conversation.id],
+    }),
+    actor: one(user, {
+      fields: [conversationAuditLog.actorUserId],
+      references: [user.id],
+    }),
+  }),
+)
