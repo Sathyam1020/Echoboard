@@ -21,7 +21,6 @@ export function AdminPageShell({
     | "feedback"
     | "roadmap"
     | "changelog"
-    | "team"
     | "support"
     | "settings"
   children: ReactNode

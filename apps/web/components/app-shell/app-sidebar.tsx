@@ -18,7 +18,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
-import { Users } from "lucide-react"
 import Link from "next/link"
 
 import { SignOutButton } from "@/components/nav/sign-out-button"
@@ -47,7 +46,6 @@ export type SidebarActiveItem =
   | "changelog"
   | "comments"
   | "analytics"
-  | "team"
   | "support"
   | "settings"
   | null
@@ -103,21 +101,6 @@ export function AppSidebar({
               href="/dashboard/changelog"
               isActive={activeItem === "changelog"}
             />
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={activeItem === "team"}
-                tooltip="Team"
-              >
-                <Link href="/dashboard/team">
-                  <Users
-                    className="size-4 shrink-0"
-                    aria-hidden="true"
-                  />
-                  <span>Team</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
             <AnimatedNavItem
               icon={SettingsIcon}
               label="Settings"

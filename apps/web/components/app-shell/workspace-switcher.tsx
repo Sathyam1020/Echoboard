@@ -172,7 +172,7 @@ export function WorkspaceSwitcher({ fallbackName }: { fallbackName: string }) {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={isSwitching}
-          onSelect={() => router.push("/dashboard/team")}
+          onSelect={() => router.push("/dashboard/settings/team")}
         >
           <Users className="mr-2 size-4" aria-hidden /> Manage team
         </DropdownMenuItem>
