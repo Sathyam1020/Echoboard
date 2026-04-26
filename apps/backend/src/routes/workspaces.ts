@@ -76,24 +76,16 @@ workspacesRouter.post(
     const session = res.locals.session!
     const id = crypto.randomUUID()
 
+    // Neon HTTP driver doesn't support transactions, so we run the two
+    // inserts sequentially with a compensating delete on failure of the
+    // second one. The compensation keeps us out of the "orphan workspace
+    // the creator can't access" state.
     try {
-      // Workspace + owner-membership in one transaction so we never end up with a
-      // workspace whose creator can't access it (and no need for the legacy
-      // owner_id-only fallback path).
-      await db.transaction(async (tx) => {
-        await tx.insert(workspace).values({
-          id,
-          name: parsed.data.name,
-          slug: parsed.data.slug,
-          ownerId: session.user.id,
-        })
-        await tx.insert(workspaceMember).values({
-          id: randomUUID(),
-          workspaceId: id,
-          userId: session.user.id,
-          role: "owner",
-          addedByUserId: session.user.id,
-        })
+      await db.insert(workspace).values({
+        id,
+        name: parsed.data.name,
+        slug: parsed.data.slug,
+        ownerId: session.user.id,
       })
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -103,6 +95,26 @@ workspacesRouter.post(
         })
       }
       throw err
+    }
+
+    try {
+      await db.insert(workspaceMember).values({
+        id: randomUUID(),
+        workspaceId: id,
+        userId: session.user.id,
+        role: "owner",
+        addedByUserId: session.user.id,
+      })
+    } catch (memberErr) {
+      // Best-effort cleanup so the slug isn't permanently consumed.
+      // If this delete itself fails we just log and rethrow — the
+      // outer error matters more than the cleanup.
+      try {
+        await db.delete(workspace).where(eq(workspace.id, id))
+      } catch {
+        // intentionally swallowed — see comment above
+      }
+      throw memberErr
     }
 
     const [row] = await db

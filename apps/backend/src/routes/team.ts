@@ -384,25 +384,28 @@ teamRouter.post(
       )
     }
 
-    // Create membership row + mark invite accepted in one transaction.
-    await db.transaction(async (tx) => {
-      try {
-        await tx.insert(workspaceMember).values({
-          id: randomUUID(),
-          workspaceId: row.workspaceId,
-          userId: session.user.id,
-          role: row.role,
-          addedByUserId: row.invitedByUserId,
-        })
-      } catch (err) {
-        // If the user was already added through some other path, that's fine.
-        if (!isUniqueViolation(err)) throw err
-      }
-      await tx
-        .update(workspaceInvite)
-        .set({ acceptedAt: new Date() })
-        .where(eq(workspaceInvite.id, row.id))
-    })
+    // Create membership row + mark invite accepted. Neon HTTP doesn't
+    // support transactions, so we run them sequentially. If the membership
+    // insert succeeds but the invite update fails, the user IS in the
+    // workspace — the only fallout is the invite row staying pending,
+    // which a re-accept attempt safely no-ops on (the membership insert's
+    // unique violation is treated as success below).
+    try {
+      await db.insert(workspaceMember).values({
+        id: randomUUID(),
+        workspaceId: row.workspaceId,
+        userId: session.user.id,
+        role: row.role,
+        addedByUserId: row.invitedByUserId,
+      })
+    } catch (err) {
+      // If the user was already added through some other path, that's fine.
+      if (!isUniqueViolation(err)) throw err
+    }
+    await db
+      .update(workspaceInvite)
+      .set({ acceptedAt: new Date() })
+      .where(eq(workspaceInvite.id, row.id))
 
     setActiveWorkspaceCookie(res, row.workspaceId)
     const [ws] = await db
