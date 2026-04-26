@@ -56,8 +56,7 @@ export function CommentForm(props: Props) {
   const authorName = session?.user?.name ?? null
   // Identity context only relevant for top + reply on public surfaces. Edit
   // never gates on visitor identity (the comment already exists with an owner).
-  const identityCtx =
-    "identity" in props ? props.identity : undefined
+  const identityCtx = "identity" in props ? props.identity : undefined
 
   // Always call the hook (rules of hooks) — pass empty workspace ids when
   // identity context isn't supplied; the hook just sits idle in that case.
@@ -161,16 +160,14 @@ export function CommentForm(props: Props) {
       onSubmit={onSubmit}
       className={cn(
         "flex flex-col gap-3",
-        isTop && "rounded-xl border border-border bg-card p-4",
+        isTop && "rounded-xl border border-border bg-card p-4"
       )}
     >
       <div className={cn("flex gap-3", !isTop && "items-start")}>
         {isTop && (authorName || visitorIdentity.visitor?.name) ? (
           <div className="pt-0.5">
             <Avatar
-              name={
-                authorName ?? visitorIdentity.visitor?.name ?? "Guest"
-              }
+              name={authorName ?? visitorIdentity.visitor?.name ?? "Guest"}
               size={32}
             />
           </div>
@@ -179,25 +176,20 @@ export function CommentForm(props: Props) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder={placeholder}
-          disabled={
-            isPending ||
-            (props.mode === "edit" && !authed)
-          }
+          disabled={isPending || (props.mode === "edit" && !authed)}
           rows={isTop ? 3 : 2}
           className={cn(
             isTop
-              ? "resize-none border-0 bg-transparent p-0 text-[14px] leading-relaxed shadow-none focus-visible:border-0 focus-visible:ring-0"
-              : "min-h-[72px] text-[13.5px] leading-relaxed",
+              ? "resize-none border-0 bg-transparent p-2 text-[14px] leading-relaxed shadow-none focus-visible:border-0 focus-visible:ring-0"
+              : "min-h-[72px] text-[13.5px] leading-relaxed"
           )}
         />
       </div>
-      {error ? (
-        <p className="text-[12px] text-destructive">{error}</p>
-      ) : null}
+      {error ? <p className="text-[12px] text-destructive">{error}</p> : null}
       <div
         className={cn(
           "flex items-center justify-end gap-2",
-          isTop && "border-t border-border-soft pt-3",
+          isTop && "border-t border-border-soft pt-3"
         )}
       >
         {props.mode !== "top" ? (
@@ -228,9 +220,7 @@ export function CommentForm(props: Props) {
                 await performWrite()
               } catch (err) {
                 setError(
-                  err instanceof ApiError
-                    ? err.message
-                    : "Something went wrong",
+                  err instanceof ApiError ? err.message : "Something went wrong"
                 )
               }
             })
