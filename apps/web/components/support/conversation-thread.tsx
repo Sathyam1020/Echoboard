@@ -28,6 +28,7 @@ import { AssigneePicker } from "./assignee-picker"
 import { SupportAvatar } from "./avatar"
 import { Composer } from "./composer"
 import { MessageBubble } from "./message-bubble"
+import { ReconnectingBanner } from "./reconnecting-banner"
 import { StatusPill } from "./status-pill"
 import { TypingDots } from "./typing-dots"
 import type { ConversationStatus } from "./types"
@@ -106,6 +107,7 @@ export function ConversationThread({
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
+      <ReconnectingBanner />
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-border bg-card px-3 py-3 sm:px-5">
         {onBack ? (

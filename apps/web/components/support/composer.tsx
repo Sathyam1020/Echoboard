@@ -37,6 +37,9 @@ export function Composer({
     try {
       await onSend(trimmed)
       setBody("")
+    } catch {
+      // Toast already fired by the send mutation's onError. Keep the
+      // body so the user can hit Enter again to retry.
     } finally {
       setPending(false)
     }

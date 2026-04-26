@@ -28,6 +28,7 @@ import type { ServerMsg } from "@/lib/realtime/socket-client"
 import { playSupportChime } from "@/lib/support-sound"
 import type { VisitorIdentity } from "@/services/visitors"
 
+import { ReconnectingBanner } from "@/components/support/reconnecting-banner"
 import { TypingDots } from "@/components/support/typing-dots"
 import type {
   SupportConversationRow,
@@ -524,6 +525,7 @@ function WidgetSupportThread({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <ReconnectingBanner />
       {/* Presence header — small banner with a colored dot. Updates
           live via the workspace channel's presence events. */}
       <div className="flex items-center gap-2 border-b border-border-soft bg-card px-4 py-2">

@@ -40,6 +40,7 @@ let socket: WebSocket | null = null
 let connectionState: ConnectionState = "closed"
 let reconnectAttempts = 0
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let onlineListenerAttached = false
 
 const BACKOFF_MS = [500, 1000, 2000, 5000, 10_000, 30_000] as const
 
@@ -87,8 +88,33 @@ function resolveWsUrl(): string {
     : base
 }
 
+// Wire 'online' once globally — when the browser regains connectivity
+// after airplane mode / network drop, force an immediate reconnect
+// rather than waiting for the next exponential-backoff tick.
+function ensureOnlineRecovery(): void {
+  if (typeof window === "undefined") return
+  if (onlineListenerAttached) return
+  onlineListenerAttached = true
+  window.addEventListener("online", () => {
+    if (channelListeners.size === 0) return
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+    reconnectAttempts = 0
+    if (
+      !socket ||
+      (socket.readyState !== WebSocket.OPEN &&
+        socket.readyState !== WebSocket.CONNECTING)
+    ) {
+      open()
+    }
+  })
+}
+
 function open(): void {
   if (typeof window === "undefined") return
+  ensureOnlineRecovery()
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return
   }
