@@ -21,6 +21,7 @@ import { authClient } from "@/lib/auth-client"
 import { renderLinkifiedText } from "@/lib/linkify"
 import { formatRelativeTime } from "@/lib/relative-time"
 
+import { ActorLink } from "../boards/actor-link"
 import { Avatar } from "../boards/avatar"
 import type { CommentRow } from "../boards/types"
 
@@ -35,6 +36,7 @@ type Props = {
   depth: number
   postId: string
   workspaceId?: string
+  workspaceSlug?: string
   workspaceOwnerId: string
   onAdd: (c: CommentRow) => void
   onUpdate: (c: CommentRow) => void
@@ -51,6 +53,7 @@ export function CommentItem({
   depth,
   postId,
   workspaceId,
+  workspaceSlug,
   workspaceOwnerId,
   onAdd,
   onUpdate,
@@ -103,14 +106,32 @@ export function CommentItem({
   return (
     <article className={contentClasses}>
       <div className="shrink-0 pt-0.5">
-        <Avatar name={node.author?.name ?? "Deleted"} size={32} />
+        {workspaceSlug && node.author?.id ? (
+          <ActorLink
+            actor={node.author}
+            workspaceSlug={workspaceSlug}
+            className="block"
+          >
+            <Avatar name={node.author.name} size={32} />
+          </ActorLink>
+        ) : (
+          <Avatar name={node.author?.name ?? "Deleted"} size={32} />
+        )}
       </div>
 
       <div className="min-w-0 flex-1">
         <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-[13.5px] font-medium text-foreground">
-            {node.author?.name ?? "Deleted user"}
-          </span>
+          {workspaceSlug ? (
+            <ActorLink
+              actor={node.author}
+              workspaceSlug={workspaceSlug}
+              className="text-[13.5px] font-medium text-foreground"
+            />
+          ) : (
+            <span className="text-[13.5px] font-medium text-foreground">
+              {node.author?.name ?? "Deleted user"}
+            </span>
+          )}
           {isOwner ? (
             <span className="inline-flex items-center rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-medium tracking-wider text-primary-foreground">
               TEAM
@@ -268,6 +289,7 @@ export function CommentItem({
                   depth={depth + 1}
                   postId={postId}
                   workspaceId={workspaceId}
+                  workspaceSlug={workspaceSlug}
                   workspaceOwnerId={workspaceOwnerId}
                   onAdd={onAdd}
                   onUpdate={onUpdate}

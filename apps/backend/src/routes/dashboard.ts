@@ -1,5 +1,5 @@
 import { db, desc, eq, sql } from "@workspace/db/client"
-import { board, post, user, workspace } from "@workspace/db/schema"
+import { board, post, user, visitor, workspace } from "@workspace/db/schema"
 import { Router, type Request, type Response } from "express"
 
 import { requireAuth } from "../middleware/require-auth.js"
@@ -47,7 +47,10 @@ dashboardRouter.get(
         description: post.description,
         status: post.status,
         createdAt: post.createdAt,
-        authorName: user.name,
+        // COALESCE both joins so visitor-authored posts surface a name
+        // here too (previously they showed up nameless).
+        authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
+        authorId: sql<string | null>`COALESCE(${user.id}, ${visitor.id})`,
         boardName: board.name,
         boardSlug: board.slug,
         workspaceSlug: workspace.slug,
@@ -56,6 +59,7 @@ dashboardRouter.get(
       .innerJoin(board, eq(post.boardId, board.id))
       .innerJoin(workspace, eq(board.workspaceId, workspace.id))
       .leftJoin(user, eq(post.authorId, user.id))
+      .leftJoin(visitor, eq(post.visitorId, visitor.id))
       .where(eq(workspace.ownerId, session.user.id))
       .orderBy(desc(post.createdAt))
       .limit(5)

@@ -73,6 +73,7 @@ export function PostDetailContent({
               <CommentList
                 postId={data.post.id}
                 workspaceId={data.post.workspace.id}
+                workspaceSlug={data.post.workspace.slug}
                 workspaceOwnerId={data.post.workspace.ownerId}
               />
             </div>

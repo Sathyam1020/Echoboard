@@ -245,6 +245,7 @@ changelogRouter.get(
         entry: changelogEntry,
         authorName: user.name,
         authorImage: user.image,
+        authorId: user.id,
       })
       .from(changelogEntry)
       .leftJoin(user, eq(changelogEntry.authorId, user.id))
@@ -300,7 +301,11 @@ changelogRouter.get(
       entries: pageRows.map((r) => ({
         ...serializeEntry(r.entry),
         author: r.authorName
-          ? { name: r.authorName, image: r.authorImage ?? null }
+          ? {
+              id: r.authorId ?? "",
+              name: r.authorName,
+              image: r.authorImage ?? null,
+            }
           : null,
         linkedPosts: linkedMap.get(r.entry.id) ?? [],
       })),

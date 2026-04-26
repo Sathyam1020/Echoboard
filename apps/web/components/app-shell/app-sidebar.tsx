@@ -138,17 +138,25 @@ export function AppSidebar({
                 <SidebarMenuButton
                   asChild
                   tooltip={`${b.name} · ${b.postCount} posts`}
-                  className="group-data-[collapsible=icon]:justify-center"
                 >
                   <Link href={`/${b.workspaceSlug}/${b.slug}`}>
+                    {/* 16x16 wrapper matches the icon footprint shadcn
+                        applies to SVGs (`[&_svg]:size-4`). Without it
+                        the 9px dot drifts left in the collapsed state
+                        because the flex gap still allocates space for
+                        the truncated label span. */}
                     <span
                       aria-hidden="true"
-                      className="size-[9px] shrink-0 rounded-full transition-transform duration-200 ease-out group-hover/menu-button:scale-125"
-                      style={{
-                        background:
-                          BOARD_DOT_COLORS[idx % BOARD_DOT_COLORS.length],
-                      }}
-                    />
+                      className="flex size-4 shrink-0 items-center justify-center"
+                    >
+                      <span
+                        className="size-[9px] rounded-full transition-transform duration-200 ease-out group-hover/menu-button:scale-125"
+                        style={{
+                          background:
+                            BOARD_DOT_COLORS[idx % BOARD_DOT_COLORS.length],
+                        }}
+                      />
+                    </span>
                     <span className="truncate">{b.name}</span>
                   </Link>
                 </SidebarMenuButton>

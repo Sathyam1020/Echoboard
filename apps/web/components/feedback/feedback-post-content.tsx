@@ -68,6 +68,7 @@ export function FeedbackPostContent({ postId }: { postId: string }) {
 
           <CommentList
             postId={data.post.id}
+            workspaceSlug={data.post.workspace.slug}
             workspaceOwnerId={data.post.workspace.ownerId}
           />
         </div>
@@ -77,7 +78,11 @@ export function FeedbackPostContent({ postId }: { postId: string }) {
             which would break sticky behavior visually. `top-4` clears the
             page padding. */}
         <aside className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
-          <VoterListCard voters={voters} totalVotes={data.post.voteCount} />
+          <VoterListCard
+            voters={voters}
+            totalVotes={data.post.voteCount}
+            workspaceSlug={data.post.workspace.slug}
+          />
           <PostStatsCard
             voteCount={data.post.voteCount}
             commentCount={activeComments}

@@ -82,6 +82,7 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
         board: board,
         workspace: workspace,
         authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
+        authorId: sql<string | null>`COALESCE(${user.id}, ${visitor.id})`,
       })
       .from(post)
       .innerJoin(board, eq(post.boardId, board.id))
@@ -202,6 +203,7 @@ postsRouter.get("/:postId", async (req: Request, res: Response) => {
       mergedInto,
       createdAt: row.post.createdAt.toISOString(),
       authorName: row.authorName,
+      authorId: row.authorId,
       voteCount,
       hasVoted,
       viewerIsOwner,
@@ -285,6 +287,9 @@ postsRouter.get(
         createdAt: comment.createdAt,
         updatedAt: comment.updatedAt,
         authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
+        authorActorId: sql<
+          string | null
+        >`COALESCE(${user.id}, ${visitor.id})`,
       })
       .from(comment)
       .leftJoin(user, eq(comment.authorId, user.id))
@@ -710,6 +715,9 @@ postsRouter.post(
         createdAt: comment.createdAt,
         updatedAt: comment.updatedAt,
         authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
+        authorActorId: sql<
+          string | null
+        >`COALESCE(${user.id}, ${visitor.id})`,
       })
       .from(comment)
       .leftJoin(user, eq(comment.authorId, user.id))

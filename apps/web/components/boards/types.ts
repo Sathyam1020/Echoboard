@@ -31,6 +31,10 @@ export type PostRow = {
   pinnedAt: string | null
   createdAt: string
   authorName: string | null
+  /** Resolved actor id — user.id OR visitor.id. Used by `<ActorLink>`
+   *  to navigate to the public profile. Null only for system/legacy
+   *  rows where we couldn't resolve an actor. */
+  authorId: string | null
   voteCount: number
   hasVoted: boolean
   commentCount: number
@@ -60,6 +64,8 @@ export type PostDetail = {
   mergedInto: MergedIntoRef | null
   createdAt: string
   authorName: string | null
+  /** Resolved actor id — see PostRow.authorId. */
+  authorId: string | null
   voteCount: number
   hasVoted: boolean
   voters: Voter[] | null

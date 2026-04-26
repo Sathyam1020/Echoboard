@@ -68,7 +68,10 @@ export function PublicChangelogEntryContent({
 
         <div className="flex flex-col-reverse gap-8 lg:flex-row">
           <PublicSidebar className="lg:w-60 lg:flex-shrink-0">
-            <WrittenByCard author={entry.author} />
+            <WrittenByCard
+              author={entry.author}
+              workspaceSlug={workspaceSlug}
+            />
           </PublicSidebar>
 
           <main className="min-w-0 flex-1">

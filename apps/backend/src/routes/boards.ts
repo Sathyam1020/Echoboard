@@ -45,6 +45,9 @@ type PostListRow = {
   pinnedAt: Date | null
   createdAt: Date
   authorName: string | null
+  /** Resolved actor id — user.id OR visitor.id. Used by ActorLink on
+   *  the frontend to navigate to the public profile. */
+  authorId: string | null
 }
 
 type LatestComment = {
@@ -114,16 +117,21 @@ async function enrichPostsWithVotes(
         .from(comment)
         .where(and(inArray(comment.postId, ids), isNull(comment.deletedAt)))
         .groupBy(comment.postId),
+      // Comment authorship is XOR — a comment has either author_id (user)
+      // or visitor_id, never both. COALESCE both joins so the latest-
+      // comment preview shows the right name + the resolved actor id
+      // (used by `<ActorLink>` to link to the author's public profile).
       db.execute(sql`
         SELECT DISTINCT ON (c.post_id)
           c.id AS id,
           c.post_id AS "postId",
           c.body AS body,
           c.created_at AS "createdAt",
-          u.id AS "authorId",
-          u.name AS "authorName"
+          COALESCE(u.id, v.id) AS "authorId",
+          COALESCE(u.name, v.name) AS "authorName"
         FROM comment c
         LEFT JOIN "user" u ON u.id = c.author_id
+        LEFT JOIN visitor v ON v.id = c.visitor_id
         WHERE c.post_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
           AND c.deleted_at IS NULL
         ORDER BY c.post_id, c.created_at DESC
@@ -182,6 +190,9 @@ async function enrichPostsWithVotes(
 type BoardFilter =
   | { kind: "single"; boardId: string }
   | { kind: "workspace"; workspaceId: string }
+  // Profile feedback tab: posts authored by a specific actor across
+  // every public board in the workspace.
+  | { kind: "actor"; workspaceId: string; actorId: string }
 
 type PaginatePostsOpts = {
   boardFilter: BoardFilter
@@ -201,7 +212,7 @@ type PaginatedPostsResult<T extends EnrichedPost = EnrichedPost> = {
   nextCursor: string | null
 }
 
-async function paginatePosts(
+export async function paginatePosts(
   opts: PaginatePostsOpts,
 ): Promise<PaginatedPostsResult> {
   const { boardFilter, cursor, sort, search, includePinned, actor } = opts
@@ -212,15 +223,24 @@ async function paginatePosts(
   // sort=votes. Wrapped via `sql` so we can reuse the same expression.
   const voteCountSql = sql<number>`(SELECT COUNT(*)::int FROM post_vote WHERE post_vote.post_id = ${post.id})`
 
-  // Board filter — single board id, or any public board within a
-  // workspace.
+  // Board filter — single board id, any public board in a workspace,
+  // or actor-scoped within the workspace's public boards.
   const boardScopeWhere =
     boardFilter.kind === "single"
       ? eq(post.boardId, boardFilter.boardId)
-      : and(
-          eq(board.workspaceId, boardFilter.workspaceId),
-          eq(board.visibility, "public"),
-        )!
+      : boardFilter.kind === "workspace"
+        ? and(
+            eq(board.workspaceId, boardFilter.workspaceId),
+            eq(board.visibility, "public"),
+          )!
+        : and(
+            eq(board.workspaceId, boardFilter.workspaceId),
+            eq(board.visibility, "public"),
+            or(
+              eq(post.authorId, boardFilter.actorId),
+              eq(post.visitorId, boardFilter.actorId),
+            ),
+          )!
 
   // Search filter — case-insensitive ILIKE on title or description.
   const searchWhere = search
@@ -269,6 +289,7 @@ async function paginatePosts(
     pinnedAt: post.pinnedAt,
     createdAt: post.createdAt,
     authorName: sql<string | null>`COALESCE(${user.name}, ${visitor.name})`,
+    authorId: sql<string | null>`COALESCE(${user.id}, ${visitor.id})`,
   } as const
 
   const selectWithBoard = {
@@ -373,6 +394,7 @@ async function paginatePosts(
     pinnedAt: r.pinnedAt,
     createdAt: r.createdAt,
     authorName: r.authorName,
+    authorId: r.authorId,
   }))
 
   const enriched = await enrichPostsWithVotes(baseForEnrich, actor)
@@ -740,6 +762,7 @@ boardsRouter.get(
           authorName: sql<
             string | null
           >`COALESCE(${user.name}, ${visitor.name})`,
+          authorId: sql<string | null>`COALESCE(${user.id}, ${visitor.id})`,
         })
         .from(post)
         .leftJoin(user, eq(post.authorId, user.id))
@@ -763,6 +786,7 @@ boardsRouter.get(
           authorName: sql<
             string | null
           >`COALESCE(${user.name}, ${visitor.name})`,
+          authorId: sql<string | null>`COALESCE(${user.id}, ${visitor.id})`,
         })
         .from(post)
         .leftJoin(user, eq(post.authorId, user.id))

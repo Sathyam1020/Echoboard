@@ -3,6 +3,7 @@ import Link from "next/link"
 
 import { formatRelativeTime } from "@/lib/relative-time"
 
+import { ActorLink } from "./actor-link"
 import { Avatar } from "./avatar"
 import { StatusBadge, isStatusKey } from "./status-icon"
 import type { PostRow } from "./types"
@@ -77,9 +78,11 @@ export function PostCard({
         <div className="rounded-md border border-border/60 bg-muted/40 p-2.5">
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <MessageSquare className="size-3" aria-hidden />
-            <span className="font-medium text-foreground">
-              {post.latestComment.author?.name ?? "Deleted user"}
-            </span>
+            <ActorLink
+              actor={post.latestComment.author}
+              workspaceSlug={workspaceSlug}
+              className="font-medium text-foreground"
+            />
             <span>replied</span>
             <span aria-hidden>·</span>
             <span className="font-mono tabular-nums">
@@ -105,10 +108,14 @@ export function PostCard({
           </span>
         ) : null}
         {post.authorName ? (
-          <span className="inline-flex items-center gap-1.5">
+          <ActorLink
+            actor={{ id: post.authorId, name: post.authorName }}
+            workspaceSlug={workspaceSlug}
+            className="inline-flex items-center gap-1.5"
+          >
             <Avatar name={post.authorName} size={18} />
             <span className="truncate">{post.authorName}</span>
-          </span>
+          </ActorLink>
         ) : null}
         <span className="font-mono tabular-nums">
           {new Date(post.createdAt).toLocaleDateString(undefined, {

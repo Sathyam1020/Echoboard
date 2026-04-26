@@ -1,12 +1,17 @@
+import { ActorLink } from "@/components/boards/actor-link"
 import { Avatar } from "@/components/boards/avatar"
 import type { Voter } from "@/components/boards/types"
 
 export function VoterListCard({
   voters,
   totalVotes,
+  workspaceSlug,
 }: {
   voters: Voter[]
   totalVotes: number
+  /** Optional — when provided, voter rows link to the voter's public
+   *  profile in a new tab. */
+  workspaceSlug?: string
 }) {
   const shown = voters.length
   const more = Math.max(0, totalVotes - shown)
@@ -34,10 +39,25 @@ export function VoterListCard({
                   : "flex items-center gap-2.5 px-4 py-2.5"
               }
             >
-              <Avatar name={v.name} size={24} />
-              <span className="min-w-0 flex-1 truncate text-[13px]">
-                {v.name}
-              </span>
+              {workspaceSlug ? (
+                <ActorLink
+                  actor={{ id: v.id, name: v.name }}
+                  workspaceSlug={workspaceSlug}
+                  className="flex min-w-0 flex-1 items-center gap-2.5"
+                >
+                  <Avatar name={v.name} size={24} />
+                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                    {v.name}
+                  </span>
+                </ActorLink>
+              ) : (
+                <>
+                  <Avatar name={v.name} size={24} />
+                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                    {v.name}
+                  </span>
+                </>
+              )}
             </li>
           ))}
           {more > 0 ? (

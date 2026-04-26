@@ -25,7 +25,7 @@ export type ChangelogEntryDetail = ChangelogEntry & {
 }
 
 export type PublicChangelogEntry = ChangelogEntry & {
-  author: { name: string; image: string | null } | null
+  author: { id: string; name: string; image: string | null } | null
   linkedPosts: Array<{ id: string; title: string; boardSlug: string }>
 }
 

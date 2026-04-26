@@ -6,6 +6,7 @@ import { commentsRouter } from "./comments.js"
 import { dashboardRouter } from "./dashboard.js"
 import { healthRouter } from "./health.js"
 import { postsRouter } from "./posts.js"
+import { profileRouter } from "./profile.js"
 import { visitorsRouter } from "./visitors.js"
 import {
   widgetConfigAdminRouter,
@@ -18,6 +19,7 @@ export const apiRouter: Router = Router()
 
 apiRouter.use("/health", healthRouter)
 apiRouter.use("/workspaces", workspacesRouter)
+apiRouter.use("/workspaces", profileRouter)
 apiRouter.use("/workspaces/me/settings", workspaceSettingsRouter)
 apiRouter.use("/boards", boardsRouter)
 apiRouter.use("/boards", widgetConfigAdminRouter)

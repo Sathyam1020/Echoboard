@@ -10,6 +10,10 @@ export type CommentRow = {
   createdAt: Date
   updatedAt: Date
   authorName: string | null
+  /** Resolved actor id — `COALESCE(user.id, visitor.id)`. Optional for
+   *  back-compat with code paths that haven't been updated to select
+   *  it yet; when absent we fall back to `authorId` (user-only). */
+  authorActorId?: string | null
 }
 
 export type SerializedCommentAuthor = {
@@ -74,6 +78,11 @@ export function serializeComment(
     }
   }
 
+  // Resolved actor id (preferred) — falls back to user-only authorId
+  // for code paths that haven't been updated to COALESCE yet. The
+  // frontend `<ActorLink>` skips the link when id is empty.
+  const actorId = row.authorActorId ?? row.authorId ?? ""
+
   return {
     id: row.id,
     postId: row.postId,
@@ -84,7 +93,7 @@ export function serializeComment(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     author: {
-      id: row.authorId ?? "",
+      id: actorId,
       name: row.authorName ?? "Guest",
       role,
     },

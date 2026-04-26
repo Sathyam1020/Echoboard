@@ -62,6 +62,15 @@ export const queryKeys = {
     roadmap: (boardId: string) => ["dashboard", "roadmap", boardId] as const,
   },
 
+  profile: {
+    detail: (workspaceSlug: string, actorId: string) =>
+      ["profile", workspaceSlug, actorId] as const,
+    feedback: (workspaceSlug: string, actorId: string) =>
+      ["profile", workspaceSlug, actorId, "feedback"] as const,
+    comments: (workspaceSlug: string, actorId: string) =>
+      ["profile", workspaceSlug, actorId, "comments"] as const,
+  },
+
   changelog: {
     list: () => ["changelog", "list"] as const,
     detail: (entryId: string) => ["changelog", "detail", entryId] as const,

@@ -1,5 +1,6 @@
 import { renderLinkifiedText } from "@/lib/linkify"
 
+import { ActorLink } from "../boards/actor-link"
 import { Avatar } from "../boards/avatar"
 import { StatusBadge, isStatusKey } from "../boards/status-icon"
 import type { PostDetail } from "../boards/types"
@@ -38,10 +39,14 @@ export function PostHeader({ post }: { post: PostDetail }) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12.5px] text-muted-foreground">
           <StatusBadge status={statusKey} />
           {post.authorName ? (
-            <span className="inline-flex items-center gap-1.5">
+            <ActorLink
+              actor={{ id: post.authorId, name: post.authorName }}
+              workspaceSlug={post.workspace.slug}
+              className="inline-flex items-center gap-1.5 text-foreground/80"
+            >
               <Avatar name={post.authorName} size={18} />
-              <span className="text-foreground/80">{post.authorName}</span>
-            </span>
+              <span>{post.authorName}</span>
+            </ActorLink>
           ) : null}
           <span className="font-mono tabular-nums">{created}</span>
         </div>

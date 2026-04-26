@@ -36,6 +36,7 @@ function buildTree(rows: CommentRow[]): CommentNode[] {
 export function CommentList({
   postId,
   workspaceId,
+  workspaceSlug,
   workspaceOwnerId,
 }: {
   postId: string
@@ -43,6 +44,10 @@ export function CommentList({
   // works (admin auth is enough there). When provided, public-board flow
   // gates anonymous comments through the identity modal.
   workspaceId?: string
+  /** Required for `<ActorLink>` to build profile URLs from comment
+   *  rows. Optional only because admin paths that don't have it in
+   *  scope can omit it — the link falls back to plain text. */
+  workspaceSlug?: string
   workspaceOwnerId: string
 }) {
   // Cache is fed by SSR (first page) + paginated fetches as the user
@@ -98,6 +103,7 @@ export function CommentList({
               depth={0}
               postId={postId}
               workspaceId={workspaceId}
+              workspaceSlug={workspaceSlug}
               workspaceOwnerId={workspaceOwnerId}
               onAdd={noop}
               onUpdate={noop}
