@@ -12,6 +12,7 @@ import { useWorkspacesMeQuery } from "@/hooks/use-workspaces"
 
 import { ConversationList } from "./conversation-list"
 import { ConversationThread } from "./conversation-thread"
+import { MuteToggle } from "./mute-toggle"
 import { SearchBar } from "./search-bar"
 import { SearchResults } from "./search-results"
 import { StatusFilter } from "./status-filter"
@@ -59,7 +60,11 @@ export function AdminSupportContent({
           the PageEnter / flex chain in between, which kept eating
           height through stretch + min-h-0 interactions. */}
       <div className="absolute inset-0 flex flex-col">
-        <AppTopbar title="Inbox" subtitle="Talk to customers in real time." />
+        <AppTopbar
+          title="Inbox"
+          subtitle="Talk to customers in real time."
+          actions={<MuteToggle />}
+        />
         <div className="flex min-h-0 flex-1 border-t border-border">
           {/* List rail. Below md, fills the screen when no conversation
               is active; collapses to fixed width once a thread is open

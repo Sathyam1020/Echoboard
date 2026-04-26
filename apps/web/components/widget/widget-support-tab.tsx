@@ -25,6 +25,7 @@ import {
   subscribe,
 } from "@/lib/realtime/socket-client"
 import type { ServerMsg } from "@/lib/realtime/socket-client"
+import { playSupportChime } from "@/lib/support-sound"
 import type { VisitorIdentity } from "@/services/visitors"
 
 import { TypingDots } from "@/components/support/typing-dots"
@@ -374,6 +375,13 @@ function WidgetSupportThread({
           setMessages((prev) =>
             prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
           )
+          // Chime on every admin reply — matches Slack / WhatsApp /
+          // iMessage convention of dinging even when the conversation
+          // is open. Skip on own messages (kind "visitor"); the mute
+          // toggle is the user's escape valve.
+          if (msg.author.kind === "user") {
+            playSupportChime()
+          }
         } else if (event.type === "message.read") {
           // Admin marked-read a customer message — stamp readAt on
           // every customer-authored message up to the upTo id.

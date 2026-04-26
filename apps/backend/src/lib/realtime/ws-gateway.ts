@@ -64,7 +64,13 @@ export function attachWsGateway(server: HttpServer): void {
   onBusMessage((channel, event) => {
     const set = subscribers.get(channel)
     if (!set) return
-    const payload = JSON.stringify(event)
+    // Tag the wire payload with the source channel so the client
+    // doesn't have to reverse-engineer routing from event fields.
+    // conversation.updated / conversation.assigned / presence don't
+    // include enough payload (no workspaceId) to derive their target
+    // channel — without _channel they'd never reach the workspace
+    // listener that subscribed for them.
+    const payload = JSON.stringify({ ...event, _channel: channel })
     for (const sock of set.keys()) {
       if (sock.readyState === WebSocket.OPEN) sock.send(payload)
     }

@@ -21,6 +21,7 @@ import {
   groupPostsForRoadmap,
 } from "@/components/roadmap/group-posts"
 import { WidgetSupportTab } from "@/components/widget/widget-support-tab"
+import { useWidgetSupportUnread } from "@/hooks/realtime/use-widget-support-unread"
 import { ApiError } from "@/lib/http/api-error"
 import { setWidgetBearer, widgetHttp } from "@/lib/http/widget-axios"
 import { setSocketBearer } from "@/lib/realtime/socket-client"
@@ -55,6 +56,15 @@ export function WidgetUI({
   const [tab, setTab] = useState<Tab>("submit")
   const [posts, setPosts] = useState<PostRow[]>(initialPosts)
   const [visitor, setVisitor] = useState<VisitorIdentity | null>(null)
+
+  // Background unread counter for the Support tab pill. Stays mounted
+  // across tab switches so admin replies received while the visitor is
+  // on Submit/Board/Roadmap still light up the indicator.
+  const supportUnread = useWidgetSupportUnread({
+    workspaceSlug: config.workspaceSlug,
+    enabled: config.supportEnabled,
+    visitorId: visitor?.id ?? null,
+  })
 
   // Identity bootstrap. Two paths:
   //   1. Bearer token from the host page via postMessage — host called
@@ -171,19 +181,32 @@ export function WidgetUI({
                 : t === "roadmap"
                   ? "Roadmap"
                   : "Support"
+          const showSupportBadge =
+            t === "support" && !active && supportUnread.unread > 0
           return (
             <button
               key={t}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => {
+                setTab(t)
+                if (t === "support") supportUnread.clear()
+              }}
               className={cn(
-                "relative -mb-px border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors",
+                "relative -mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors",
                 active
                   ? "border-foreground text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
               {label}
+              {showSupportBadge ? (
+                <span
+                  aria-label={`${supportUnread.unread} unread`}
+                  className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-mono text-[10px] tabular-nums text-primary-foreground"
+                >
+                  {supportUnread.unread > 9 ? "9+" : supportUnread.unread}
+                </span>
+              ) : null}
             </button>
           )
         })}

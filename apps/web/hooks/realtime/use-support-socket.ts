@@ -6,6 +6,7 @@ import { useEffect } from "react"
 import { queryKeys } from "@/lib/query/keys"
 import { subscribe } from "@/lib/realtime/socket-client"
 import type { ServerMsg } from "@/lib/realtime/socket-client"
+import { playSupportChime } from "@/lib/support-sound"
 
 import type {
   SupportConversationRow,
@@ -54,6 +55,15 @@ export function useSupportSocket({
             ...page,
             conversations: applyPatch(page.conversations, id, patch),
           }))
+          // Chime on every visitor-authored message — matches Slack /
+          // WhatsApp / iMessage behavior of dinging even when the
+          // conversation is already open. Status-only patches skip
+          // (only fire when the patch actually carried a fresh msg).
+          // The mute toggle is the user's escape valve.
+          const lastMsg = patch.lastMessage
+          if (lastMsg && lastMsg.authorKind === "visitor") {
+            playSupportChime()
+          }
         } else if (event.type === "conversation.assigned") {
           const id = event.conversationId as string
           const assignedTo = event.assignedTo as
@@ -66,7 +76,7 @@ export function useSupportSocket({
         }
       },
     )
-  }, [workspaceId, qc])
+  }, [workspaceId, qc, conversationId])
 
   // Conversation channel — message + read events for the active thread.
   useEffect(() => {

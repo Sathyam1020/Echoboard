@@ -169,9 +169,11 @@ function close(): void {
   setState("closed")
 }
 
-// The backend's events don't carry a channel name in the payload — they
-// flow over the WS already routed. So routing here is by event TYPE +
-// the conversation/workspace id embedded in the payload.
+// The gateway tags every published event with `_channel`: the source
+// channel from the redis bus. Routing here is exactly that — dispatch
+// to the listener set registered for that channel. Fallback path
+// derives the channel from event fields for backwards-compat with any
+// older event shapes.
 function channelListenersToHit(event: ServerMsg): string[] {
   const t = event.type
   if (t === "pong" || t === "subscribed" || t === "subscribe-error") {
@@ -179,10 +181,15 @@ function channelListenersToHit(event: ServerMsg): string[] {
     // observe connection-level state if they care.
     return Array.from(channelListeners.keys())
   }
-  // Routed by the id baked into the event. The exact field set varies
-  // by event type — read everything as a generic bag rather than
-  // narrowing the discriminated union on every branch.
   const bag = event as unknown as Record<string, unknown>
+  const stamped = typeof bag._channel === "string" ? bag._channel : null
+  if (stamped) return [stamped]
+
+  // Legacy fallback — only reached if the gateway didn't stamp
+  // _channel. conversation.updated / conversation.assigned / presence
+  // don't carry workspaceId in their payload, so they wouldn't reach
+  // their workspace listener via this path. Kept as a defense for
+  // partial deployments.
   const conversationId =
     typeof bag.conversationId === "string" ? bag.conversationId : null
   const conversation = bag.conversation as
