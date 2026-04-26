@@ -5,6 +5,7 @@ import { board, workspace, workspaceMember } from "@workspace/db/schema"
 import { Router, type Request, type Response } from "express"
 import { z } from "zod"
 
+import { readCookie } from "../lib/cookies.js"
 import { setActiveWorkspaceCookie } from "../lib/workspace-context.js"
 import { AppError } from "../middleware/error-handler.js"
 import { requireAuth } from "../middleware/require-auth.js"
@@ -139,7 +140,7 @@ workspacesRouter.post(
 workspacesRouter.get(
   "/me",
   requireAuth,
-  async (_req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const session = res.locals.session!
     // Read every workspace this user is a member of (any role). The legacy
     // single-owner relation is migrated into workspace_member, so this query
@@ -166,7 +167,20 @@ workspacesRouter.get(
       .where(eq(workspaceMember.userId, session.user.id))
       .orderBy(desc(workspaceMember.createdAt))
 
-    res.json({ workspaces: rows })
+    // Bubble the workspace pinned by the active_workspace_id cookie to
+    // position 0. Several FE surfaces (settings, switcher, onboarding)
+    // read workspaces[0] as "current" — this keeps them honest about
+    // which workspace the user is actually working in.
+    const activeId = readCookie(req, "active_workspace_id")
+    const sorted = activeId
+      ? [
+          ...rows.filter((r) => r.id === activeId),
+          ...rows.filter((r) => r.id !== activeId),
+        ]
+      : rows
+    const annotated = sorted.map((r, i) => ({ ...r, active: i === 0 }))
+
+    res.json({ workspaces: annotated })
   },
 )
 

@@ -8,6 +8,9 @@ export type WorkspaceMeRow = {
   slug: string
   ownerId: string
   role: WorkspaceRole
+  // True for the workspace selected by the active_workspace_id cookie.
+  // The backend guarantees the active workspace is sorted to index 0.
+  active: boolean
 }
 
 export type WorkspaceMe = {
