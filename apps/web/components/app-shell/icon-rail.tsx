@@ -19,6 +19,8 @@ import {
   type LucideIcon,
   Map as MapIcon,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plug,
   Plus,
   Settings as SettingsIcon,
@@ -39,6 +41,7 @@ import { setFaviconDot } from "@/lib/favicon-dot"
 
 import { SignOutButton } from "@/components/nav/sign-out-button"
 import type { SidebarActiveItem, SidebarUser } from "./app-sidebar-types"
+import { useRailCollapsed } from "./rail-collapsed-context"
 
 type NavItem = {
   id: Exclude<SidebarActiveItem, null> | "people" | "analytics"
@@ -70,12 +73,20 @@ export function IconRail({
 }) {
   const pathname = usePathname()
   const integrationsActive = pathname?.startsWith("/dashboard/settings/integrations") ?? false
+  // Clicking any nav icon also expands the desktop rail (so a same-route
+  // Link click doesn't get stuck collapsed) and closes the mobile drawer
+  // (Sheet doesn't auto-close on Link clicks).
+  const { setCollapsed, setMobileOpen } = useRailCollapsed()
+  const onNavClick = () => {
+    setCollapsed(false)
+    setMobileOpen(false)
+  }
 
   return (
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Primary"
-        className="hidden h-full w-[56px] shrink-0 flex-col items-center gap-1 border-r border-rail-border bg-rail-bg py-3 md:flex"
+        className="flex h-full w-[56px] shrink-0 flex-col items-center gap-1 border-r border-rail-border bg-rail-bg py-3"
       >
         <BrandSwitcher />
 
@@ -88,6 +99,7 @@ export function IconRail({
                 label={item.label}
                 Icon={item.icon}
                 isActive={activeItem === item.id}
+                onNavigate={onNavClick}
               />
             ) : (
               <RailIcon
@@ -97,6 +109,7 @@ export function IconRail({
                 Icon={item.icon}
                 isActive={activeItem === item.id}
                 disabled={item.disabled}
+                onNavigate={onNavClick}
               />
             ),
           )}
@@ -108,13 +121,16 @@ export function IconRail({
             label="Integrations"
             Icon={Plug}
             isActive={integrationsActive}
+            onNavigate={onNavClick}
           />
           <RailIcon
             href="/dashboard/settings"
             label="Settings"
             Icon={SettingsIcon}
             isActive={activeItem === "settings"}
+            onNavigate={onNavClick}
           />
+          <RailCollapseToggle />
           <UserBadge user={user} />
           <div className="-mb-1">
             <SignOutButton iconOnly />
@@ -242,6 +258,7 @@ function RailIcon({
   isActive,
   badge,
   disabled,
+  onNavigate,
 }: {
   href: string
   label: string
@@ -249,6 +266,7 @@ function RailIcon({
   isActive: boolean
   badge?: number
   disabled?: boolean
+  onNavigate?: () => void
 }) {
   const baseClass =
     "relative flex size-9 items-center justify-center rounded-lg transition-colors"
@@ -274,7 +292,12 @@ function RailIcon({
         {disabled ? (
           <span className={cls} aria-disabled="true">{inner}</span>
         ) : (
-          <Link href={href} className={cls} aria-current={isActive ? "page" : undefined}>
+          <Link
+            href={href}
+            className={cls}
+            aria-current={isActive ? "page" : undefined}
+            onClick={onNavigate}
+          >
             {inner}
           </Link>
         )}
@@ -293,11 +316,13 @@ function SupportRailIcon({
   label,
   Icon,
   isActive,
+  onNavigate,
 }: {
   href: string
   label: string
   Icon: LucideIcon
   isActive: boolean
+  onNavigate?: () => void
 }) {
   const query = useSupportConversationsInfiniteQuery({})
   const conversations = query.data?.pages.flatMap((p) => p.conversations) ?? []
@@ -338,7 +363,30 @@ function SupportRailIcon({
       Icon={Icon}
       isActive={isActive}
       badge={unread}
+      onNavigate={onNavigate}
     />
+  )
+}
+
+function RailCollapseToggle() {
+  const { collapsed, toggle } = useRailCollapsed()
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose
+  const label = collapsed ? "Expand sidebar" : "Collapse sidebar"
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={label}
+          aria-pressed={collapsed}
+          className="hidden size-9 items-center justify-center rounded-lg text-rail-fg-muted transition-colors hover:bg-rail-hover hover:text-rail-active-fg md:flex"
+        >
+          <Icon className="size-[18px]" strokeWidth={2} aria-hidden />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   )
 }
 

@@ -55,11 +55,7 @@ export function AdminSupportContent({
 
   return (
     <AdminPageShell activeItem="support" fullHeight>
-      {/* SidebarInset is `position: relative` — anchoring the chat with
-          absolute inset:0 makes it fill that container regardless of
-          the PageEnter / flex chain in between, which kept eating
-          height through stretch + min-h-0 interactions. */}
-      <div className="absolute inset-0 flex flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <AppTopbar
           title="Inbox"
           subtitle="Talk to customers in real time."

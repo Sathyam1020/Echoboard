@@ -2,10 +2,12 @@
 
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
-import { ExternalLink, type LucideIcon } from "lucide-react"
+import { ExternalLink, type LucideIcon, PanelLeftClose } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { type ReactNode } from "react"
+
+import { useRailCollapsed } from "./rail-collapsed-context"
 
 // Shared chrome for every contextual rail (Feedback / Roadmap / Changelog /
 // Support / Settings). Header has the module title + an optional public-page
@@ -22,12 +24,21 @@ export function ContextRail({
   actions?: ReactNode
   children: ReactNode
 }) {
+  const { collapsed, setCollapsed } = useRailCollapsed()
+  // Inner panels keep their natural 240px width while the aside animates
+  // its outer width to 0 — content slides under the IconRail seam rather
+  // than reflowing.
   return (
     <aside
       aria-label={title}
-      className="hidden h-full w-60 shrink-0 flex-col border-r border-rail-border bg-rail-panel-bg md:flex"
+      aria-hidden={collapsed}
+      data-collapsed={collapsed ? "true" : "false"}
+      className={cn(
+        "flex h-full shrink-0 flex-col overflow-hidden bg-rail-panel-bg transition-[width,border-color] duration-200 ease-out",
+        collapsed ? "w-0 border-r-0" : "w-60 border-r border-rail-border",
+      )}
     >
-      <div className="flex h-12 items-center justify-between gap-2 border-b border-rail-border px-4">
+      <div className="flex h-12 w-60 items-center justify-between gap-2 border-b border-rail-border px-4">
         <h2 className="truncate text-[15px] font-medium text-rail-fg">{title}</h2>
         <div className="flex items-center gap-1">
           {actions}
@@ -44,9 +55,20 @@ export function ContextRail({
               </Link>
             </Button>
           ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hidden size-7 text-rail-fg-muted hover:bg-rail-hover hover:text-rail-active-fg md:inline-flex"
+            aria-label="Collapse sidebar"
+            tabIndex={collapsed ? -1 : 0}
+            onClick={() => setCollapsed(true)}
+          >
+            <PanelLeftClose className="size-3.5" aria-hidden />
+          </Button>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-3">{children}</div>
+      <div className="flex w-60 flex-1 flex-col overflow-y-auto px-3 py-3">{children}</div>
     </aside>
   )
 }
@@ -102,12 +124,17 @@ export function RailLink({
   active,
 }: RailLinkProps) {
   const pathname = usePathname()
+  const { setMobileOpen } = useRailCollapsed()
   const computedActive = href
     ? matchExact
       ? pathname === href
       : pathname === href || pathname.startsWith(`${href}/`)
     : false
   const isActive = active ?? computedActive
+  const handleClick = () => {
+    setMobileOpen(false)
+    onClick?.()
+  }
 
   const cls = cn(
     "group/rail-link flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
@@ -134,13 +161,18 @@ export function RailLink({
 
   if (!href || disabled) {
     return (
-      <button type="button" className={cls} onClick={onClick} disabled={disabled}>
+      <button type="button" className={cls} onClick={handleClick} disabled={disabled}>
         {inner}
       </button>
     )
   }
   return (
-    <Link href={href} className={cls} aria-current={isActive ? "page" : undefined}>
+    <Link
+      href={href}
+      className={cls}
+      aria-current={isActive ? "page" : undefined}
+      onClick={handleClick}
+    >
       {inner}
     </Link>
   )

@@ -1,7 +1,9 @@
 "use client"
 
+import { Sheet, SheetContent } from "@workspace/ui/components/sheet"
 import { cn } from "@workspace/ui/lib/utils"
-import { type ReactNode } from "react"
+import { usePathname } from "next/navigation"
+import { type ReactNode, useEffect } from "react"
 
 import { IconRail } from "@/components/app-shell/icon-rail"
 import { ChangelogRail } from "@/components/app-shell/rails/changelog-rail"
@@ -14,6 +16,10 @@ import { useDashboardBoardsQuery } from "@/hooks/use-dashboard"
 import { authClient } from "@/lib/auth-client"
 
 import type { SidebarActiveItem, SidebarBoard } from "./app-sidebar-types"
+import {
+  RailCollapsedProvider,
+  useRailCollapsed,
+} from "./rail-collapsed-context"
 
 type ActiveSection = Exclude<SidebarActiveItem, null>
 
@@ -49,35 +55,101 @@ export function AdminPageShell({
     postCount: b.postCount,
   }))
 
+  const user = {
+    name: session.user.name,
+    email: session.user.email,
+    image: session.user.image,
+  }
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      <IconRail
-        workspaceName={workspaceName}
-        activeItem={activeItem}
-        user={{
-          name: session.user.name,
-          email: session.user.email,
-          image: session.user.image,
-        }}
-      />
-      <SectionRail
-        section={activeItem}
-        boards={boards}
-        workspaceSlug={workspaceSlug}
-      />
-      <main
-        className={cn(
-          "flex-1 overflow-y-auto bg-[var(--surface-3)] text-foreground",
-          fullHeight && "flex min-h-0 flex-col",
-        )}
-      >
-        <PageEnter
-          className={fullHeight ? "flex flex-1 min-h-0 flex-col" : undefined}
+    <RailCollapsedProvider>
+      <div className="flex h-screen overflow-hidden">
+        {/* Desktop rails. `display: contents` at md+ so the children
+            participate directly in the flex parent — and `display: none`
+            below md so they don't double-render alongside the mobile
+            drawer. */}
+        <div className="hidden md:contents">
+          <IconRail
+            workspaceName={workspaceName}
+            activeItem={activeItem}
+            user={user}
+          />
+          <SectionRail
+            section={activeItem}
+            boards={boards}
+            workspaceSlug={workspaceSlug}
+          />
+        </div>
+
+        <MobileNavSheet
+          activeItem={activeItem}
+          workspaceName={workspaceName}
+          workspaceSlug={workspaceSlug}
+          boards={boards}
+          user={user}
+        />
+
+        <main
+          className={cn(
+            "flex-1 overflow-y-auto bg-[var(--surface-3)] text-foreground",
+            fullHeight && "flex min-h-0 flex-col",
+          )}
         >
-          {children}
-        </PageEnter>
-      </main>
-    </div>
+          <PageEnter
+            className={fullHeight ? "flex flex-1 min-h-0 flex-col" : undefined}
+          >
+            {children}
+          </PageEnter>
+        </main>
+      </div>
+    </RailCollapsedProvider>
+  )
+}
+
+function MobileNavSheet({
+  activeItem,
+  workspaceName,
+  workspaceSlug,
+  boards,
+  user,
+}: {
+  activeItem: ActiveSection
+  workspaceName: string
+  workspaceSlug: string | undefined
+  boards: SidebarBoard[]
+  user: { name: string; email: string; image: string | null | undefined }
+}) {
+  const { mobileOpen, setMobileOpen } = useRailCollapsed()
+  const pathname = usePathname()
+
+  // Auto-close the drawer on route change. Catches cases where a click
+  // target inside the rails doesn't go through onClick (e.g. nested
+  // <Link> components, programmatic router.push from a rail item).
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname, setMobileOpen])
+
+  return (
+    <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+      <SheetContent
+        side="left"
+        className="w-auto max-w-[320px] border-r-0 bg-rail-bg p-0 md:hidden"
+        showCloseButton={false}
+      >
+        <div className="flex h-full">
+          <IconRail
+            workspaceName={workspaceName}
+            activeItem={activeItem}
+            user={user}
+          />
+          <SectionRail
+            section={activeItem}
+            boards={boards}
+            workspaceSlug={workspaceSlug}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
