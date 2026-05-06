@@ -6,6 +6,8 @@
 // Convention: read-keys are functions returning tuples; mutations don't
 // have keys, they use these to invalidate / setQueryData.
 
+import type { SortOption } from "@/services/boards"
+
 export const queryKeys = {
   boards: {
     all: () => ["boards"] as const,
@@ -66,6 +68,14 @@ export const queryKeys = {
     boards: () => ["dashboard", "boards"] as const,
     recentPosts: () => ["dashboard", "recent-posts"] as const,
     feedback: (boardId: string) => ["dashboard", "feedback", boardId] as const,
+    /** Admin all-feedback inbox — separate cache per filter combo so
+     *  switching status/board doesn't pollute neighbouring lists. */
+    feedbackList: (filter: {
+      boardId: string | null
+      status: string | null
+      sort: SortOption
+      search: string
+    }) => ["dashboard", "feedback-list", filter] as const,
     roadmap: (boardId: string) => ["dashboard", "roadmap", boardId] as const,
   },
 

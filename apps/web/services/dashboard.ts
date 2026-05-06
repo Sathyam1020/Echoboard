@@ -1,6 +1,6 @@
 import { httpClient } from "@/lib/http/axios-client"
 import type { PostRow } from "@/components/boards/types"
-import type { PostsPage, SortOption } from "@/services/boards"
+import type { PostRowWithBoard, PostsPage, SortOption } from "@/services/boards"
 
 export type DashboardBoard = {
   boardId: string
@@ -52,6 +52,29 @@ export async function fetchAdminPostsByBoard(args: {
   const qs = params.toString()
   const { data } = await httpClient.get<PostsPage<PostRow>>(
     `/api/boards/${encodeURIComponent(args.boardId)}/posts${qs ? `?${qs}` : ""}`,
+  )
+  return data
+}
+
+// Admin all-feedback inbox feed. Filterable by status, board, or both.
+// Always returns rows with their source board attached so the chip row /
+// "from <board>" badge can render without an extra lookup.
+export async function fetchAdminFeedback(args: {
+  boardId?: string | null
+  status?: string | null
+  cursor?: string | null
+  sort?: SortOption
+  search?: string
+}): Promise<PostsPage<PostRowWithBoard>> {
+  const params = new URLSearchParams()
+  if (args.boardId) params.set("boardId", args.boardId)
+  if (args.status) params.set("status", args.status)
+  if (args.cursor) params.set("cursor", args.cursor)
+  if (args.sort && args.sort !== "newest") params.set("sort", args.sort)
+  if (args.search) params.set("search", args.search)
+  const qs = params.toString()
+  const { data } = await httpClient.get<PostsPage<PostRowWithBoard>>(
+    `/api/dashboard/feedback${qs ? `?${qs}` : ""}`,
   )
   return data
 }

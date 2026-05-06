@@ -187,9 +187,13 @@ export async function enrichPostsWithVotes(
 // page (cursor === null + includePinned) prepends pinned posts; cursor
 // pages return only unpinned items so we never re-emit a pinned row.
 
-type BoardFilter =
+export type BoardFilter =
   | { kind: "single"; boardId: string }
   | { kind: "workspace"; workspaceId: string }
+  // Admin all-feedback inbox: posts across every board in the workspace
+  // regardless of board visibility (private boards still surface to
+  // workspace members).
+  | { kind: "workspace-admin"; workspaceId: string }
   // Profile feedback tab: posts authored by a specific actor across
   // every public board in the workspace.
   | { kind: "actor"; workspaceId: string; actorId: string }
@@ -204,6 +208,8 @@ type PaginatePostsOpts = {
   includePinned: boolean
   /** All-feedback view sets this to attach `board` info to each post. */
   includeBoardOnPost?: boolean
+  /** Admin filter: narrows results to posts with this status. */
+  status?: string
   actor: OptionalActor
 }
 
@@ -224,7 +230,8 @@ export async function paginatePosts(
   const voteCountSql = sql<number>`(SELECT COUNT(*)::int FROM post_vote WHERE post_vote.post_id = ${post.id})`
 
   // Board filter — single board id, any public board in a workspace,
-  // or actor-scoped within the workspace's public boards.
+  // every board in a workspace (admin), or actor-scoped within the
+  // workspace's public boards.
   const boardScopeWhere =
     boardFilter.kind === "single"
       ? eq(post.boardId, boardFilter.boardId)
@@ -233,14 +240,19 @@ export async function paginatePosts(
             eq(board.workspaceId, boardFilter.workspaceId),
             eq(board.visibility, "public"),
           )!
-        : and(
-            eq(board.workspaceId, boardFilter.workspaceId),
-            eq(board.visibility, "public"),
-            or(
-              eq(post.authorId, boardFilter.actorId),
-              eq(post.visitorId, boardFilter.actorId),
-            ),
-          )!
+        : boardFilter.kind === "workspace-admin"
+          ? eq(board.workspaceId, boardFilter.workspaceId)
+          : and(
+              eq(board.workspaceId, boardFilter.workspaceId),
+              eq(board.visibility, "public"),
+              or(
+                eq(post.authorId, boardFilter.actorId),
+                eq(post.visitorId, boardFilter.actorId),
+              ),
+            )!
+
+  // Status filter — admin inbox narrows to a single status across boards.
+  const statusWhere = opts.status ? eq(post.status, opts.status) : undefined
 
   // Search filter — case-insensitive ILIKE on title or description.
   const searchWhere = search
@@ -324,6 +336,7 @@ export async function paginatePosts(
         isNull(post.mergedIntoPostId),
         isNull(post.pinnedAt),
         searchWhere,
+        statusWhere,
         cursorWhere,
       ),
     )
@@ -376,6 +389,7 @@ export async function paginatePosts(
           isNull(post.mergedIntoPostId),
           isNotNull(post.pinnedAt),
           searchWhere,
+          statusWhere,
         ),
       )
       .orderBy(desc(post.pinnedAt), desc(post.createdAt), desc(post.id))

@@ -1,6 +1,8 @@
 "use client"
 
 import { ChevronRight, Sparkles, BarChart3, Tags, FolderOpen } from "lucide-react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useTransition } from "react"
 
 import {
   STATUS_KEYS,
@@ -12,14 +14,49 @@ import { useCollapsibleState } from "@/hooks/use-collapsible-state"
 import type { SidebarBoard } from "../app-sidebar-types"
 import { ContextRail, RailDot, RailGroup, RailLink } from "../context-rail"
 
+const FEEDBACK_PATH = "/dashboard/feedback"
+
 export function FeedbackRail({
-  workspaceSlug,
+  workspaceSlug: _workspaceSlug,
   boards,
 }: {
   workspaceSlug: string
   boards: SidebarBoard[]
 }) {
-  const publicHref = boards[0] ? `/${boards[0].workspaceSlug}/${boards[0].slug}` : undefined
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [, startTransition] = useTransition()
+
+  const currentStatus = searchParams.get("status")
+  const currentBoardId = searchParams.get("boardId")
+
+  // External-link icon points at the active filtered board's public page
+  // when one is selected, else the first board.
+  const activeBoard = boards.find((b) => b.id === currentBoardId) ?? boards[0]
+  const publicHref = activeBoard
+    ? `/${activeBoard.workspaceSlug}/${activeBoard.slug}`
+    : undefined
+
+  function setFilter(name: "status" | "boardId", value: string | null) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value === null) {
+      params.delete(name)
+    } else {
+      params.set(name, value)
+    }
+    const qs = params.toString()
+    const url = `${FEEDBACK_PATH}${qs ? `?${qs}` : ""}`
+    startTransition(() => {
+      // On the feedback page already → replace so chip toggles don't
+      // flood history. Coming from elsewhere → push to land here.
+      if (pathname === FEEDBACK_PATH) {
+        router.replace(url)
+      } else {
+        router.push(url)
+      }
+    })
+  }
 
   return (
     <ContextRail title="Feedback" publicHref={publicHref}>
@@ -27,15 +64,24 @@ export function FeedbackRail({
         {STATUS_KEYS.map((key) => (
           <RailLink
             key={key}
-            href={`/dashboard/feedback?status=${key}`}
             label={STATUS_LABEL[key]}
             iconNode={<StatusIcon status={key} size={14} />}
+            active={currentStatus === key}
+            onClick={() =>
+              setFilter("status", currentStatus === key ? null : key)
+            }
           />
         ))}
       </RailGroup>
 
       <RailGroup label="Quick Filters">
-        <BoardsCollapsible boards={boards} />
+        <BoardsCollapsible
+          boards={boards}
+          currentBoardId={currentBoardId}
+          onPick={(id) =>
+            setFilter("boardId", currentBoardId === id ? null : id)
+          }
+        />
         <RailLink label="Tags" icon={Tags} disabled trailing={<ComingSoonChip />} />
       </RailGroup>
 
@@ -47,7 +93,15 @@ export function FeedbackRail({
   )
 }
 
-function BoardsCollapsible({ boards }: { boards: SidebarBoard[] }) {
+function BoardsCollapsible({
+  boards,
+  currentBoardId,
+  onPick,
+}: {
+  boards: SidebarBoard[]
+  currentBoardId: string | null
+  onPick: (id: string) => void
+}) {
   const [open, setOpen] = useCollapsibleState("feedback-boards", true)
 
   return (
@@ -74,10 +128,11 @@ function BoardsCollapsible({ boards }: { boards: SidebarBoard[] }) {
             boards.map((b) => (
               <RailLink
                 key={b.id}
-                href={`/${b.workspaceSlug}/${b.slug}`}
                 label={b.name}
                 badge={b.postCount}
                 iconNode={<RailDot color="var(--brand)" />}
+                active={currentBoardId === b.id}
+                onClick={() => onPick(b.id)}
               />
             ))
           )}

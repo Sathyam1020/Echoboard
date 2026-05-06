@@ -1,5 +1,4 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { FeedbackPageContent } from "@/components/feedback/feedback-page-content"
@@ -7,19 +6,19 @@ import { getSession } from "@/lib/get-session"
 import { queryKeys } from "@/lib/query/keys"
 import { makeQueryClient } from "@/lib/query/query-client"
 import {
-  fetchAdminPostsByBoardSSR,
+  fetchAdminFeedbackSSR,
   fetchDashboardBoardsSSR,
 } from "@/services/dashboard.server"
 
 export default async function FeedbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ boardId?: string }>
+  searchParams: Promise<{ boardId?: string; status?: string }>
 }) {
   const session = await getSession()
   if (!session) redirect("/signin")
 
-  const { boardId: boardIdParam } = await searchParams
+  const { boardId: boardIdParam, status: statusParam } = await searchParams
 
   const queryClient = makeQueryClient()
 
@@ -28,28 +27,30 @@ export default async function FeedbackPage({
 
   queryClient.setQueryData(queryKeys.dashboard.boards(), boards)
 
-  // Active board resolution: URL param wins (explicit), then the
-  // active_board_id cookie (last switcher pick), then the first board.
-  // The .find() falls through to boards[0] if either id no longer
-  // belongs to the active workspace.
-  const cookieStore = await cookies()
-  const cookieBoardId = cookieStore.get("active_board_id")?.value ?? null
-  const activeBoard =
-    boards.boards.find((b) => b.boardId === boardIdParam) ??
-    boards.boards.find((b) => b.boardId === cookieBoardId) ??
-    boards.boards[0]!
-  const postsPage = await fetchAdminPostsByBoardSSR({
-    boardId: activeBoard.boardId,
-    sort: "newest",
-  })
-  queryClient.setQueryData(
-    queryKeys.boards.posts(activeBoard.boardId, "newest", ""),
-    { pages: [postsPage], pageParams: [null] },
-  )
+  // Only prefetch posts when at least one filter is set. Empty filter
+  // state renders the picker hint and never fires the request.
+  const boardId = boardIdParam ?? null
+  const status = statusParam ?? null
+  if (boardId || status) {
+    const postsPage = await fetchAdminFeedbackSSR({
+      boardId,
+      status,
+      sort: "newest",
+    })
+    queryClient.setQueryData(
+      queryKeys.dashboard.feedbackList({
+        boardId,
+        status,
+        sort: "newest",
+        search: "",
+      }),
+      { pages: [postsPage], pageParams: [null] },
+    )
+  }
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <FeedbackPageContent initialBoardId={activeBoard.boardId} />
+      <FeedbackPageContent />
     </HydrationBoundary>
   )
 }

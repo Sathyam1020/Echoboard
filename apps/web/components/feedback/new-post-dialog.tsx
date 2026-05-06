@@ -20,15 +20,31 @@ import { useState, useTransition } from "react"
 import { useCreatePostMutation } from "@/hooks/use-posts"
 import { ApiError } from "@/lib/http/api-error"
 
-export function NewPostDialog({ boardId }: { boardId: string }) {
+export function NewPostDialog({
+  boardId,
+  defaultOpen,
+  onOpenChange,
+}: {
+  boardId: string
+  /** Optional: open the dialog immediately on mount. Used by the topbar
+   *  board-picker variant where the dropdown handles the trigger UI. */
+  defaultOpen?: boolean
+  /** Optional: notify the parent when the dialog open-state changes. */
+  onOpenChange?: (open: boolean) => void
+}) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [open, setOpenState] = useState(defaultOpen ?? false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const mutation = useCreatePostMutation()
+
+  function setOpen(next: boolean) {
+    setOpenState(next)
+    onOpenChange?.(next)
+  }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

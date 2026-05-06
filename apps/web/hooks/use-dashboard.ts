@@ -5,6 +5,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query/keys"
 import type { SortOption } from "@/services/boards"
 import {
+  fetchAdminFeedback,
   fetchAdminPostsByBoard,
   fetchDashboardBoards,
   fetchRecentPosts,
@@ -50,5 +51,29 @@ export function useAdminPostsByBoardInfiniteQuery(args: {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!args.boardId,
+  })
+}
+
+// Admin all-feedback inbox. Only fires when at least one of status /
+// boardId is set — empty filter state renders the picker instead.
+export function useAdminFeedbackInfiniteQuery(args: {
+  boardId: string | null
+  status: string | null
+  sort: SortOption
+  search: string
+}) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.dashboard.feedbackList(args),
+    queryFn: ({ pageParam }) =>
+      fetchAdminFeedback({
+        boardId: args.boardId,
+        status: args.status,
+        cursor: pageParam,
+        sort: args.sort,
+        search: args.search,
+      }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!(args.boardId || args.status),
   })
 }
