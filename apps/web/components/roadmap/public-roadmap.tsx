@@ -25,11 +25,9 @@ const COLUMN_EMPTY: Record<
 export function PublicRoadmap({
   posts,
   workspaceSlug,
-  boardSlug,
 }: {
   posts: PostRow[]
   workspaceSlug: string
-  boardSlug: string
 }) {
   const grouped = groupPostsForRoadmap(posts)
 
@@ -47,13 +45,15 @@ export function PublicRoadmap({
                 title={empty.title}
               />
             ) : (
-              columnPosts.map((p) => (
-                <RoadmapCard
-                  key={p.id}
-                  post={p}
-                  href={`/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}/${encodeURIComponent(p.id)}`}
-                />
-              ))
+              columnPosts.map((p) => {
+                // Workspace-aggregated roadmap — post lives on its own
+                // board, link uses that board's slug (not a shared one).
+                const slug = p.board?.slug
+                const href = slug
+                  ? `/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(slug)}/${encodeURIComponent(p.id)}`
+                  : `/${encodeURIComponent(workspaceSlug)}`
+                return <RoadmapCard key={p.id} post={p} href={href} />
+              })
             )}
           </RoadmapColumn>
         )

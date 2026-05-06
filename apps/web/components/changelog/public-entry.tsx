@@ -28,12 +28,9 @@ function stripMarkdown(input: string): string {
 export function PublicEntry({
   entry,
   workspaceSlug,
-  boardSlug,
 }: {
   entry: PublicChangelogEntry
   workspaceSlug: string
-  /** Board slug used to build the entry detail URL. */
-  boardSlug: string
 }) {
   const when = entry.publishedAt ?? entry.createdAt
   const whenLabel = new Date(when).toLocaleDateString(undefined, {
@@ -42,7 +39,7 @@ export function PublicEntry({
     day: "numeric",
   })
   const preview = stripMarkdown(entry.body)
-  const href = `/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}/changelog/${encodeURIComponent(entry.id)}`
+  const href = `/${encodeURIComponent(workspaceSlug)}/changelog/${encodeURIComponent(entry.id)}`
 
   // `.changelog-entry` provides the timeline (left rule + dot ::before).
   // The whole row is a Link — we add a transparent rounded "hit area" to

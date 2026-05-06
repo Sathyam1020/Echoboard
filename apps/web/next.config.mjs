@@ -14,6 +14,10 @@ if (
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@workspace/ui", "@workspace/auth", "@workspace/db"],
+  reactCompiler: true,
+  experimental: {
+    optimizePackageImports: ["motion"],
+  },
 }
 
 export default nextConfig

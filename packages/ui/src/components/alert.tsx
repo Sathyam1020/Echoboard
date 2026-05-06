@@ -1,5 +1,8 @@
+"use client"
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import { motion, useReducedMotion, type HTMLMotionProps } from "motion/react"
 
 import { cn } from "@workspace/ui/lib/utils"
 
@@ -19,16 +22,27 @@ const alertVariants = cva(
   }
 )
 
-function Alert({
-  className,
-  variant,
-  ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+// Alerts are inherently event-driven (form errors, system messages), so
+// they pop in mid-flow. A subtle fade + slide-down on mount makes that
+// arrival feel intentional. Reduced-motion users get the static
+// rendering — no animation at all.
+type AlertProps = HTMLMotionProps<"div"> & VariantProps<typeof alertVariants>
+
+function Alert({ className, variant, ...props }: AlertProps) {
+  const reduceMotion = useReducedMotion()
+  const motionProps = reduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: -4 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.18, ease: "easeOut" as const },
+      }
   return (
-    <div
+    <motion.div
       data-slot="alert"
       role="alert"
       className={cn(alertVariants({ variant }), className)}
+      {...motionProps}
       {...props}
     />
   )

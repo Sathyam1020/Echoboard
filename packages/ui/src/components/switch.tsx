@@ -1,33 +1,71 @@
-"use client"
+import * as React from 'react';
 
-import * as React from "react"
-import { Switch as SwitchPrimitive } from "radix-ui"
+import {
+  Switch as SwitchPrimitive,
+  SwitchThumb as SwitchThumbPrimitive,
+  SwitchIcon as SwitchIconPrimitive,
+  type SwitchProps as SwitchPrimitiveProps,
+} from '@workspace/ui/animate-ui/primitives/radix-switch';
+import { cn } from '@workspace/ui/lib/utils';
 
-import { cn } from "@workspace/ui/lib/utils"
+type SwitchProps = SwitchPrimitiveProps & {
+  pressedWidth?: number;
+  startIcon?: React.ReactElement;
+  endIcon?: React.ReactElement;
+  thumbIcon?: React.ReactElement;
+};
 
 function Switch({
   className,
-  size = "default",
+  pressedWidth = 19,
+  startIcon,
+  endIcon,
+  thumbIcon,
   ...props
-}: React.ComponentProps<typeof SwitchPrimitive.Root> & {
-  size?: "sm" | "default"
-}) {
+}: SwitchProps) {
   return (
-    <SwitchPrimitive.Root
-      data-slot="switch"
-      data-size={size}
+    <SwitchPrimitive
       className={cn(
-        "peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50",
-        className
+        'relative peer focus-visible:border-ring focus-visible:ring-ring/50 flex h-5 w-8 px-px shrink-0 items-center justify-start rounded-full border border-transparent shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+        'data-[state=checked]:bg-primary data-[state=unchecked]:bg-input dark:data-[state=unchecked]:bg-input/80 data-[state=checked]:justify-end',
+        className,
       )}
       {...props}
     >
-      <SwitchPrimitive.Thumb
-        data-slot="switch-thumb"
-        className="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
-      />
-    </SwitchPrimitive.Root>
-  )
+      <SwitchThumbPrimitive
+        className={cn(
+          'relative z-10 bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0',
+        )}
+        pressedAnimation={{ width: pressedWidth }}
+      >
+        {thumbIcon && (
+          <SwitchIconPrimitive
+            position="thumb"
+            className="absolute [&_svg]:size-[9px] left-1/2 top-1/2 -translate-1/2 dark:text-neutral-500 text-neutral-400"
+          >
+            {thumbIcon}
+          </SwitchIconPrimitive>
+        )}
+      </SwitchThumbPrimitive>
+
+      {startIcon && (
+        <SwitchIconPrimitive
+          position="left"
+          className="absolute [&_svg]:size-[9px] left-0.5 top-1/2 -translate-y-1/2 dark:text-neutral-500 text-neutral-400"
+        >
+          {startIcon}
+        </SwitchIconPrimitive>
+      )}
+      {endIcon && (
+        <SwitchIconPrimitive
+          position="right"
+          className="absolute [&_svg]:size-[9px] right-0.5 top-1/2 -translate-y-1/2 dark:text-neutral-400 text-neutral-500"
+        >
+          {endIcon}
+        </SwitchIconPrimitive>
+      )}
+    </SwitchPrimitive>
+  );
 }
 
-export { Switch }
+export { Switch, type SwitchProps };

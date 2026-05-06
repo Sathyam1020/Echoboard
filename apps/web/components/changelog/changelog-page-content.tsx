@@ -21,7 +21,7 @@ export function ChangelogPageContent() {
 
   const first = boards[0]
   const publicHref = first
-    ? `/${encodeURIComponent(first.workspaceSlug)}/${encodeURIComponent(first.boardSlug)}/changelog`
+    ? `/${encodeURIComponent(first.workspaceSlug)}/changelog`
     : "/"
 
   const isInitialLoading = listQuery.isPending && !listQuery.data

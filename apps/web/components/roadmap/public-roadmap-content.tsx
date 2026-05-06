@@ -6,16 +6,14 @@ import { PublicTopBar } from "@/components/boards/public-top-bar"
 import { PageEnter } from "@/components/common/page-enter"
 import { PublicRoadmap } from "@/components/roadmap/public-roadmap"
 import { RoadmapStatsCard } from "@/components/roadmap/roadmap-stats-card"
-import { useBoardRoadmapQuery } from "@/hooks/queries/use-board-roadmap"
+import { useWorkspacePublicRoadmapQuery } from "@/hooks/queries/use-workspace-roadmap"
 
 export function PublicRoadmapContent({
   workspaceSlug,
-  boardSlug,
 }: {
   workspaceSlug: string
-  boardSlug: string
 }) {
-  const { data } = useBoardRoadmapQuery({ workspaceSlug, boardSlug })
+  const { data } = useWorkspacePublicRoadmapQuery({ workspaceSlug })
   if (!data) return null
 
   return (
@@ -25,8 +23,8 @@ export function PublicRoadmapContent({
         workspaceSlug={data.workspace.slug}
         workspaceId={data.workspace.id}
         workspaceOwnerId={data.workspace.ownerId}
-        boardSlug={data.board.slug}
-        boardId={data.board.id}
+        boardSlug={data.firstBoard?.slug}
+        boardId={data.firstBoard?.id}
         activeTab="roadmap"
       />
 
@@ -42,14 +40,14 @@ export function PublicRoadmapContent({
                 Roadmap
               </h1>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                What&apos;s planned, in progress, and recently shipped.
+                What&apos;s planned, in progress, and recently shipped across
+                every board.
               </p>
             </header>
 
             <PublicRoadmap
               posts={data.posts}
               workspaceSlug={data.workspace.slug}
-              boardSlug={data.board.slug}
             />
           </main>
         </div>

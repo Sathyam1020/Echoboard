@@ -16,12 +16,23 @@ export function RoadmapCard({
       className="block rounded-md border border-border bg-card px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <h3 className="text-[13px] font-medium leading-snug">{post.title}</h3>
-      <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
         <span className="font-mono tabular-nums">{post.voteCount} votes</span>
         {post.commentCount > 0 ? (
           <span className="inline-flex items-center gap-1">
             <MessageSquare className="size-3" aria-hidden />
             <span className="font-mono tabular-nums">{post.commentCount}</span>
+          </span>
+        ) : null}
+        {post.board ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="size-1.5 rounded-full bg-muted-foreground/60"
+              aria-hidden
+            />
+            <span className="max-w-[12ch] truncate text-foreground/80">
+              {post.board.name}
+            </span>
           </span>
         ) : null}
       </div>

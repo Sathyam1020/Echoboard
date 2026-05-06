@@ -37,7 +37,7 @@ import {
 import { AppError } from "../middleware/error-handler.js"
 import { requireAnyAuth } from "../middleware/require-any-auth.js"
 
-type PostListRow = {
+export type PostListRow = {
   id: string
   title: string
   description: string
@@ -65,7 +65,7 @@ type EnrichedPost = Omit<PostListRow, "pinnedAt"> & {
   latestComment: LatestComment | null
 }
 
-async function enrichPostsWithVotes(
+export async function enrichPostsWithVotes(
   posts: PostListRow[],
   actor: OptionalActor,
 ): Promise<EnrichedPost[]> {

@@ -53,6 +53,13 @@ export const queryKeys = {
   workspaces: {
     me: () => ["workspaces", "me"] as const,
     settings: () => ["workspaces", "me", "settings"] as const,
+    /** Workspace-wide admin roadmap — posts across every board, grouped
+     *  by status. */
+    roadmap: (workspaceSlug: string) =>
+      ["workspaces", "roadmap", workspaceSlug] as const,
+    /** Public workspace roadmap — public-board posts only, no auth. */
+    publicRoadmap: (workspaceSlug: string) =>
+      ["workspaces", "public-roadmap", workspaceSlug] as const,
   },
 
   dashboard: {

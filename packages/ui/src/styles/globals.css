@@ -10,203 +10,244 @@
 /*
  * =========================================================
  *  ECHOBOARD — DESIGN SYSTEM
- *  Ported from cal.com's coss-ui tokens (AGPL values, used
- *  as reference points — CSS tokens aren't copyrightable).
+ *  Brand: green-teal (oklch hue 165). Warm neutrals (hue
+ *  ~60) on every surface. First-class dark mode + always-
+ *  dark sidebar with brand-tinted active state.
  *
- *  Palette: pure white + Tailwind neutral scale
- *  Primary: neutral-800 (near-black). No brand accent on
- *    CTAs; brand identity = typography + layout.
- *  Feedback status badges keep their semantic colors
- *    (purple/blue/amber/teal) since cal has no equivalent.
+ *  Naming: every token used by existing components keeps
+ *  its name — only values change. New tokens (--brand-*,
+ *  --success-*, --warning-*, --info-*, --foreground-
+ *  secondary, --focus-ring) are additive.
  * =========================================================
  */
 
 :root {
-  /* Radius — cal.com ships 0.625rem (10px). */
   --radius: 0.625rem;
 
-  /* Base surfaces — pure white, cool neutral text. */
-  --background: #ffffff;
-  --foreground: var(--color-neutral-800);
-
+  /* Surfaces — warm off-white page, pure white cards. */
+  --background: oklch(0.985 0.003 60);
+  --foreground: oklch(0.20 0.005 60);
   --card: #ffffff;
-  --card-foreground: var(--color-neutral-800);
-
+  --card-foreground: var(--foreground);
   --popover: #ffffff;
-  --popover-foreground: var(--color-neutral-800);
+  --popover-foreground: var(--foreground);
+  --surface-3: oklch(0.96 0.005 60);
+  --foreground-subtle: oklch(0.65 0.008 60);
+  --foreground-secondary: oklch(0.40 0.005 60);
 
-  /* Primary is neutral-800 (near-black). CTAs are dark, not teal. */
-  --primary: var(--color-neutral-800);
-  --primary-foreground: var(--color-neutral-50);
-  --primary-hover: var(--color-neutral-900);
+  /* Brand — confident green-teal. */
+  --brand: oklch(0.52 0.14 165);
+  --brand-foreground: oklch(0.99 0.005 60);
+  --brand-hover: oklch(0.46 0.14 165);
+  --brand-subtle: oklch(0.97 0.02 165);
+  --brand-muted: color-mix(in srgb, var(--brand) 10%, transparent);
 
-  /* Secondary / muted / accent are thin black overlays (cal.com pattern). */
-  --secondary: color-mix(in srgb, black 4%, transparent);
-  --secondary-foreground: var(--color-neutral-800);
+  /* Primary = brand. CTAs read teal everywhere. */
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --primary-hover: var(--brand-hover);
 
-  --muted: color-mix(in srgb, black 4%, transparent);
-  --muted-foreground: color-mix(in srgb, var(--color-neutral-500) 90%, black);
+  --secondary: oklch(0.95 0.005 60);
+  --secondary-foreground: var(--foreground);
 
-  --accent: color-mix(in srgb, black 4%, transparent);
-  --accent-foreground: var(--color-neutral-800);
+  --muted: oklch(0.96 0.005 60);
+  --muted-foreground: oklch(0.55 0.008 60);
 
-  --destructive: var(--color-red-500);
-  --destructive-foreground: var(--color-red-700);
-  --destructive-tint: color-mix(in srgb, var(--color-red-500) 10%, white);
+  --accent: var(--brand-muted);
+  --accent-foreground: var(--brand);
 
-  --border: color-mix(in srgb, black 8%, transparent);
-  --border-soft: color-mix(in srgb, black 5%, transparent);
-  --input: color-mix(in srgb, black 10%, transparent);
-  --ring: var(--color-neutral-400);
+  --destructive: oklch(0.58 0.20 27);
+  --destructive-foreground: oklch(0.99 0.005 60);
+  --destructive-tint: oklch(0.95 0.04 27);
 
-  /* Extra surface + faded text (tertiary layer). */
-  --surface-3: var(--color-neutral-50);
-  --foreground-subtle: color-mix(in srgb, var(--color-neutral-400) 90%, black);
+  --border: oklch(0.90 0.005 60);
+  --border-soft: oklch(0.93 0.005 60);
+  --input: oklch(0.88 0.005 60);
+  --ring: var(--brand);
+  --focus-ring: color-mix(in srgb, var(--brand) 50%, transparent);
 
-  /* Sidebar — pale neutral, foreground slightly muted. */
-  --sidebar: var(--color-neutral-50);
-  --sidebar-foreground: color-mix(
-    in srgb,
-    var(--color-neutral-800) 70%,
-    var(--sidebar)
-  );
-  --sidebar-primary: var(--color-neutral-800);
-  --sidebar-primary-foreground: var(--color-neutral-50);
-  --sidebar-accent: color-mix(in srgb, black 4%, transparent);
-  --sidebar-accent-foreground: var(--color-neutral-800);
-  --sidebar-border: color-mix(in srgb, black 6%, transparent);
-  --sidebar-ring: var(--color-neutral-400);
+  /* Status — refined oklch, same hue families. Shipped dot = brand. */
+  --status-review-bg: oklch(0.95 0.04 290);
+  --status-review-text: oklch(0.35 0.14 290);
+  --status-review-dot: oklch(0.55 0.20 290);
 
-  /* Chart palette — cal's default mix. */
-  --chart-1: var(--color-orange-600);
-  --chart-2: var(--color-teal-600);
-  --chart-3: var(--color-cyan-900);
-  --chart-4: var(--color-amber-400);
-  --chart-5: var(--color-amber-500);
+  --status-planned-bg: oklch(0.95 0.04 245);
+  --status-planned-text: oklch(0.35 0.12 245);
+  --status-planned-dot: oklch(0.55 0.20 245);
 
-  /* ============================================
-     Feedback-specific semantic colors — unchanged.
-     Review purple / Planned blue / Progress amber
-     / Shipped teal. Works on pure-white bg.
-     ============================================ */
-  --status-review-bg: oklch(0.94 0.03 290);
-  --status-review-text: oklch(0.35 0.12 290);
-  --status-review-dot: oklch(0.55 0.18 290);
+  --status-progress-bg: oklch(0.95 0.05 70);
+  --status-progress-text: oklch(0.35 0.12 65);
+  --status-progress-dot: oklch(0.65 0.18 65);
 
-  --status-planned-bg: oklch(0.94 0.03 240);
-  --status-planned-text: oklch(0.35 0.1 240);
-  --status-planned-dot: oklch(0.55 0.18 240);
+  --status-shipped-bg: oklch(0.95 0.04 165);
+  --status-shipped-text: oklch(0.35 0.10 165);
+  --status-shipped-dot: var(--brand);
 
-  --status-progress-bg: oklch(0.95 0.05 85);
-  --status-progress-text: oklch(0.32 0.08 55);
-  --status-progress-dot: oklch(0.6 0.17 55);
+  /* Semantic — distinct from status. Success uses pure green (hue 145)
+     so it doesn't collide with shipped/teal at 165. */
+  --success: oklch(0.55 0.14 145);
+  --success-foreground: oklch(0.30 0.10 145);
+  --success-bg: oklch(0.95 0.04 145);
 
-  --status-shipped-bg: oklch(0.94 0.04 160);
-  --status-shipped-text: oklch(0.28 0.07 160);
-  --status-shipped-dot: oklch(0.55 0.14 160);
+  --warning: oklch(0.68 0.15 70);
+  --warning-foreground: oklch(0.35 0.12 65);
+  --warning-bg: oklch(0.96 0.05 70);
+
+  --info: oklch(0.55 0.14 245);
+  --info-foreground: oklch(0.30 0.12 245);
+  --info-bg: oklch(0.95 0.04 245);
 
   /* MRR pill (V2 feature; kept in case we ship it later). */
-  --mrr-bg: oklch(0.94 0.04 160);
-  --mrr-text: oklch(0.47 0.12 160);
+  --mrr-bg: var(--status-shipped-bg);
+  --mrr-text: var(--status-shipped-text);
 
-  /* Vote button — muted neutral, active = subtle dark tint. */
-  --vote-bg: var(--color-neutral-50);
-  --vote-border: color-mix(in srgb, black 8%, transparent);
-  --vote-text: color-mix(in srgb, var(--color-neutral-500) 90%, black);
-  --vote-active-bg: color-mix(in srgb, black 6%, transparent);
-  --vote-active-border: color-mix(in srgb, black 16%, transparent);
-  --vote-active-text: var(--color-neutral-800);
+  /* Vote button — brand-tinted active. */
+  --vote-bg: oklch(0.96 0.005 60);
+  --vote-border: var(--border);
+  --vote-text: var(--muted-foreground);
+  --vote-active-bg: var(--brand-muted);
+  --vote-active-border: var(--brand);
+  --vote-active-text: var(--brand);
+
+  /* Sidebar (legacy shadcn tokens — kept working but the rail is what's
+     actually mounted now). */
+  --sidebar: oklch(0.97 0.005 60);
+  --sidebar-foreground: oklch(0.40 0.005 60);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: var(--brand-muted);
+  --sidebar-accent-foreground: var(--brand);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  /* Charts — brand-friendly palette. */
+  --chart-1: var(--brand);
+  --chart-2: var(--info);
+  --chart-3: var(--warning);
+  --chart-4: var(--status-review-dot);
+  --chart-5: var(--success);
+
+  /* =========================================================
+     Always-dark sidebar (warm-neutral OKLCH).
+     Defined ONLY in :root — sidebar reads identical in light
+     & dark mode (no .dark override). Active state is brand-
+     tinted teal so the eye lands on "where you are."
+     ========================================================= */
+  --rail-bg: oklch(0.14 0.005 60);
+  --rail-panel-bg: oklch(0.18 0.005 60);
+  --rail-fg: oklch(0.90 0.005 60);
+  --rail-fg-muted: oklch(0.58 0.005 60);
+  --rail-fg-subtle: oklch(0.46 0.005 60);
+  --rail-border: color-mix(in srgb, white 8%, transparent);
+  --rail-hover: color-mix(in srgb, white 6%, transparent);
+  --rail-active: color-mix(in srgb, var(--brand) 15%, transparent);
+  --rail-active-fg: var(--brand);
+
+  --rail-status-review: oklch(0.72 0.18 290);
+  --rail-status-planned: oklch(0.70 0.16 245);
+  --rail-status-progress: oklch(0.74 0.16 65);
+  --rail-status-shipped: var(--brand);
 }
 
 .dark {
-  --background: color-mix(
-    in srgb,
-    var(--color-neutral-950) 96%,
-    white
-  );
-  --foreground: var(--color-neutral-100);
+  --background: oklch(0.14 0.005 60);
+  --foreground: oklch(0.93 0.005 60);
+  --card: oklch(0.18 0.005 60);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.20 0.005 60);
+  --popover-foreground: var(--foreground);
+  --surface-3: oklch(0.16 0.005 60);
+  --foreground-subtle: oklch(0.55 0.008 60);
+  --foreground-secondary: oklch(0.75 0.005 60);
 
-  --card: color-mix(in srgb, var(--background) 98%, white);
-  --card-foreground: var(--color-neutral-100);
+  --brand: oklch(0.62 0.14 165);
+  --brand-foreground: oklch(0.15 0.02 165);
+  --brand-hover: oklch(0.68 0.14 165);
+  --brand-subtle: oklch(0.22 0.04 165);
+  --brand-muted: color-mix(in srgb, var(--brand) 14%, transparent);
 
-  --popover: color-mix(in srgb, var(--background) 96%, white);
-  --popover-foreground: var(--color-neutral-100);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --primary-hover: var(--brand-hover);
 
-  --primary: var(--color-neutral-100);
-  --primary-foreground: var(--color-neutral-800);
-  --primary-hover: var(--color-neutral-50);
-
-  --secondary: color-mix(in srgb, white 4%, transparent);
-  --secondary-foreground: var(--color-neutral-100);
+  --secondary: color-mix(in srgb, white 6%, transparent);
+  --secondary-foreground: var(--foreground);
 
   --muted: color-mix(in srgb, white 4%, transparent);
-  --muted-foreground: color-mix(in srgb, var(--color-neutral-500) 90%, white);
+  --muted-foreground: oklch(0.55 0.008 60);
 
-  --accent: color-mix(in srgb, white 4%, transparent);
-  --accent-foreground: var(--color-neutral-100);
+  --accent: var(--brand-muted);
+  --accent-foreground: var(--brand);
 
-  --destructive: color-mix(in srgb, var(--color-red-500) 90%, white);
-  --destructive-foreground: var(--color-red-400);
-  --destructive-tint: color-mix(in srgb, var(--color-red-500) 22%, black);
+  --destructive: oklch(0.62 0.20 27);
+  --destructive-foreground: oklch(0.95 0.04 27);
+  --destructive-tint: oklch(0.30 0.10 27);
 
-  --border: color-mix(in srgb, white 6%, transparent);
-  --border-soft: color-mix(in srgb, white 4%, transparent);
-  --input: color-mix(in srgb, white 8%, transparent);
-  --ring: var(--color-neutral-500);
+  --border: color-mix(in srgb, white 8%, transparent);
+  --border-soft: color-mix(in srgb, white 5%, transparent);
+  --input: color-mix(in srgb, white 10%, transparent);
+  --ring: var(--brand);
+  --focus-ring: color-mix(in srgb, var(--brand) 50%, transparent);
 
-  --surface-3: color-mix(in srgb, var(--background) 96%, white);
-  --foreground-subtle: color-mix(in srgb, var(--color-neutral-500) 85%, white);
+  --status-review-bg: oklch(0.24 0.06 290);
+  --status-review-text: oklch(0.85 0.12 290);
+  --status-review-dot: oklch(0.72 0.18 290);
 
-  --sidebar: color-mix(in srgb, var(--color-neutral-950) 97%, white);
-  --sidebar-foreground: color-mix(
-    in srgb,
-    var(--color-neutral-100) 64%,
-    var(--sidebar)
-  );
-  --sidebar-primary: var(--color-neutral-100);
-  --sidebar-primary-foreground: var(--color-neutral-800);
-  --sidebar-accent: color-mix(in srgb, white 4%, transparent);
-  --sidebar-accent-foreground: var(--color-neutral-100);
-  --sidebar-border: color-mix(in srgb, white 5%, transparent);
-  --sidebar-ring: var(--color-neutral-400);
+  --status-planned-bg: oklch(0.24 0.05 245);
+  --status-planned-text: oklch(0.85 0.12 245);
+  --status-planned-dot: oklch(0.70 0.16 245);
 
-  --chart-1: var(--color-blue-700);
-  --chart-2: var(--color-emerald-500);
-  --chart-3: var(--color-amber-500);
-  --chart-4: var(--color-purple-500);
-  --chart-5: var(--color-rose-500);
-
-  /* Status colors in dark — less saturated backgrounds. */
-  --status-review-bg: oklch(0.22 0.06 290);
-  --status-review-text: oklch(0.85 0.1 290);
-  --status-review-dot: oklch(0.7 0.16 290);
-
-  --status-planned-bg: oklch(0.22 0.05 240);
-  --status-planned-text: oklch(0.82 0.1 240);
-  --status-planned-dot: oklch(0.68 0.14 240);
-
-  --status-progress-bg: oklch(0.22 0.05 65);
+  --status-progress-bg: oklch(0.24 0.05 65);
   --status-progress-text: oklch(0.85 0.12 65);
-  --status-progress-dot: oklch(0.72 0.15 65);
+  --status-progress-dot: oklch(0.74 0.16 65);
 
-  --status-shipped-bg: oklch(0.22 0.05 160);
-  --status-shipped-text: oklch(0.82 0.1 160);
-  --status-shipped-dot: oklch(0.68 0.14 160);
+  --status-shipped-bg: oklch(0.24 0.05 165);
+  --status-shipped-text: oklch(0.85 0.10 165);
+  --status-shipped-dot: var(--brand);
 
-  --mrr-bg: oklch(0.22 0.05 160);
-  --mrr-text: oklch(0.8 0.11 160);
+  --success: oklch(0.65 0.14 145);
+  --success-foreground: oklch(0.85 0.10 145);
+  --success-bg: oklch(0.24 0.05 145);
 
-  --vote-bg: color-mix(in srgb, var(--background) 90%, white);
-  --vote-border: color-mix(in srgb, white 8%, transparent);
-  --vote-text: color-mix(in srgb, var(--color-neutral-500) 85%, white);
-  --vote-active-bg: color-mix(in srgb, white 8%, transparent);
-  --vote-active-border: color-mix(in srgb, white 20%, transparent);
-  --vote-active-text: var(--color-neutral-100);
+  --warning: oklch(0.74 0.16 70);
+  --warning-foreground: oklch(0.85 0.12 65);
+  --warning-bg: oklch(0.24 0.05 70);
+
+  --info: oklch(0.65 0.14 245);
+  --info-foreground: oklch(0.85 0.12 245);
+  --info-bg: oklch(0.24 0.05 245);
+
+  --mrr-bg: oklch(0.24 0.05 165);
+  --mrr-text: oklch(0.85 0.10 165);
+
+  --vote-bg: oklch(0.20 0.005 60);
+  --vote-border: var(--border);
+  --vote-text: var(--muted-foreground);
+  --vote-active-bg: var(--brand-muted);
+  --vote-active-border: var(--brand);
+  --vote-active-text: var(--brand);
+
+  --sidebar: oklch(0.16 0.005 60);
+  --sidebar-foreground: oklch(0.65 0.005 60);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: var(--brand-muted);
+  --sidebar-accent-foreground: var(--brand);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --chart-1: var(--brand);
+  --chart-2: var(--info);
+  --chart-3: var(--warning);
+  --chart-4: var(--status-review-dot);
+  --chart-5: var(--success);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-subtle: var(--foreground-subtle);
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -216,6 +257,7 @@
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
 
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -228,18 +270,33 @@
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-tint: var(--destructive-tint);
 
   --color-border: var(--border);
   --color-border-soft: var(--border-soft);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-focus-ring: var(--focus-ring);
 
   --color-surface-3: var(--surface-3);
-  --color-foreground-subtle: var(--foreground-subtle);
 
-  --color-primary-hover: var(--primary-hover);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-muted: var(--brand-muted);
 
-  --color-destructive-tint: var(--destructive-tint);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-bg: var(--success-bg);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-bg: var(--warning-bg);
+
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-bg: var(--info-bg);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -249,6 +306,16 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-rail-bg: var(--rail-bg);
+  --color-rail-panel-bg: var(--rail-panel-bg);
+  --color-rail-fg: var(--rail-fg);
+  --color-rail-fg-muted: var(--rail-fg-muted);
+  --color-rail-fg-subtle: var(--rail-fg-subtle);
+  --color-rail-border: var(--rail-border);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-active: var(--rail-active);
+  --color-rail-active-fg: var(--rail-active-fg);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -282,13 +349,11 @@
   --color-vote-active-border: var(--vote-active-border);
   --color-vote-active-text: var(--vote-active-text);
 
-  /* Radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Font variables — populated by next/font in layout.tsx. */
   --font-sans:
     var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
@@ -312,6 +377,7 @@
       "ss01" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.011em;
   }
 
   h1,
@@ -320,7 +386,8 @@
   h4,
   h5,
   h6 {
-    @apply font-medium tracking-tight;
+    @apply font-medium;
+    letter-spacing: -0.02em;
   }
 
   [data-mono] {
@@ -333,8 +400,7 @@
      hood (Tabs, Dropdown, Accordion, Select, Sheet, etc.) and only a
      handful of those primitives set their own cursor. Apply pointer to
      every interactive role globally so we don't have to track it down
-     per-component. Disabled elements opt out via `:disabled` /
-     `aria-disabled` selectors below. */
+     per-component. */
   button:not(:disabled):not([aria-disabled="true"]),
   [role="button"]:not([aria-disabled="true"]),
   [role="tab"]:not([aria-disabled="true"]),
@@ -353,11 +419,7 @@
 }
 
 @layer components {
-  /* ---- Status Badge ----
-     Pair the class with a <StatusIcon /> child instead of relying on the
-     old ::before dot. The class handles bg + text colour only.
-     <span class="status-badge status-planned"><Icon/> Planned</span>
-  */
+  /* ---- Status Badge ---- */
   .status-badge {
     @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium;
   }
@@ -409,11 +471,8 @@
   }
 
   /* ---- Feedback Card ----
-     Column layout: title+vote row on top, description, meta at bottom.
-     Cards sit on a lightly-tinted page bg so the white surface pops.
-     Per design rule (no shadows), hover depth comes from a slightly stronger
-     border — not a drop shadow.
-  */
+     Per design rule (no shadows), hover depth comes from a slightly
+     stronger border — not a drop shadow. */
   .feedback-card {
     @apply flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors;
   }
@@ -426,7 +485,7 @@
     @apply mb-2 flex items-center gap-2 border-b pb-2 text-xs font-medium text-muted-foreground;
   }
 
-  /* ---- Filter Pill ---- */
+  /* ---- Filter Pill — active state reads brand. ---- */
   .filter-pill {
     @apply inline-flex cursor-pointer items-center rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors;
   }
@@ -434,9 +493,9 @@
     @apply border-border text-foreground;
   }
   .filter-active {
-    background-color: var(--vote-active-bg);
-    color: var(--vote-active-text);
-    border-color: var(--vote-active-border);
+    background-color: var(--brand-muted);
+    color: var(--brand);
+    border-color: var(--brand);
   }
 
   /* ---- Changelog Timeline Entry ---- */
@@ -464,6 +523,29 @@
   }
   .empty-state-description {
     @apply max-w-[280px] text-xs text-muted-foreground/70;
+  }
+
+  /* ---- Brand CTA — used on landing page, upgrade prompts, key actions. ---- */
+  .btn-brand {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors;
+    background-color: var(--brand);
+    color: var(--brand-foreground);
+  }
+  .btn-brand:hover {
+    background-color: var(--brand-hover);
+  }
+  .btn-brand:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+  .btn-brand:active {
+    transform: scale(0.98);
+  }
+
+  /* ---- Brand highlight — subtle bg for selected/active rows in app surfaces. ---- */
+  .brand-highlight {
+    background-color: var(--brand-muted);
+    color: var(--brand);
   }
 }
 
@@ -493,9 +575,21 @@
   40% { transform: scale(1); opacity: 1; }
 }
 
+/* Skeleton shimmer — opt-in via `<Skeleton shimmer>`. Slides a faint
+   highlight overlay across the muted bg. */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 @layer utilities {
+  /* Hidden by default, fades in on hover — so the bar isn't visual
+     noise on read-heavy pages. */
   .scrollbar-thin {
     scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .scrollbar-thin:hover {
     scrollbar-color: var(--border) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
@@ -506,8 +600,11 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: var(--border);
+    background-color: transparent;
     border-radius: 3px;
+  }
+  .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    background-color: var(--border);
   }
 
   .text-balance {
@@ -519,12 +616,21 @@
   }
 }
 
-/* Selection + focus — neutral, matches cal.com. */
 ::selection {
-  background-color: color-mix(in srgb, var(--color-neutral-800) 20%, transparent);
+  background-color: color-mix(in srgb, var(--brand) 25%, transparent);
   color: inherit;
 }
 
 :focus-visible {
-  @apply outline-2 outline-offset-2 outline-ring;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Inputs deliberately have NO focus outline — user feedback flagged
+   the click flash as annoying. Buttons / links / etc. still get the
+   brand outline above. */
+input:focus-visible,
+textarea:focus-visible,
+[contenteditable="true"]:focus-visible {
+  outline: none;
 }

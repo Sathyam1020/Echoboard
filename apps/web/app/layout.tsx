@@ -1,6 +1,7 @@
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import type { Metadata, Viewport } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
+import Script from "next/script"
 
 import "@workspace/ui/globals.css"
 import { Providers } from "@/app/providers"
@@ -113,6 +114,15 @@ export default function RootLayout({
       )}
     >
       <head>
+        {/* React Scan: dev-only re-render highlighter. Gated on NODE_ENV so
+            the script is never shipped to production users. */}
+        {process.env.NODE_ENV === "development" ? (
+          <Script
+            src="https://unpkg.com/react-scan/dist/auto.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        ) : null}
         {BACKEND_ORIGIN ? (
           <link
             rel="preconnect"

@@ -1,6 +1,40 @@
 import { httpClient } from "@/lib/http/axios-client"
 
+import type { PostRowWithBoard } from "./boards"
+
 export type WorkspaceRole = "owner" | "admin" | "member"
+
+export type WorkspaceRoadmapResponse = {
+  workspace: { id: string; name: string; slug: string; ownerId: string }
+  /** Earliest-created public board in the workspace. Used by the
+   *  topbar's Submit dialog as the implicit target when the visitor
+   *  is on a workspace-level surface (no specific board context). */
+  firstBoard: { id: string; name: string; slug: string } | null
+  /** All planned + in-progress posts plus the 50 most recent shipped,
+   *  aggregated across every board in the workspace. Each post carries
+   *  its source `board` so the UI can render a board chip on the card. */
+  posts: PostRowWithBoard[]
+}
+
+export async function fetchWorkspaceRoadmap(args: {
+  workspaceSlug: string
+}): Promise<WorkspaceRoadmapResponse> {
+  const { data } = await httpClient.get<WorkspaceRoadmapResponse>(
+    `/api/workspaces/by-slug/${encodeURIComponent(args.workspaceSlug)}/roadmap`,
+  )
+  return data
+}
+
+// Public sibling of fetchWorkspaceRoadmap. No auth required; the
+// backend filters to public-board posts only.
+export async function fetchPublicWorkspaceRoadmap(args: {
+  workspaceSlug: string
+}): Promise<WorkspaceRoadmapResponse> {
+  const { data } = await httpClient.get<WorkspaceRoadmapResponse>(
+    `/api/workspaces/by-slug/${encodeURIComponent(args.workspaceSlug)}/roadmap/public`,
+  )
+  return data
+}
 
 export type WorkspaceMeRow = {
   id: string

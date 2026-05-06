@@ -3,7 +3,7 @@ import type { PublicChangelogEntry } from "@/components/changelog/types"
 
 // Metadata-only — entries moved to a paginated sub-endpoint.
 export type PublicChangelogResponse = {
-  workspace: { id: string; name: string; slug: string }
+  workspace: { id: string; name: string; slug: string; ownerId: string }
   firstBoard: { id: string; name: string; slug: string } | null
 }
 

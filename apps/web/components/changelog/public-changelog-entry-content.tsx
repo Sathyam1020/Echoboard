@@ -10,7 +10,6 @@ import { PublicTopBar } from "@/components/boards/public-top-bar"
 import { MarkdownBody } from "@/components/changelog/markdown-body"
 import { WrittenByCard } from "@/components/changelog/written-by-card"
 import { PageEnter } from "@/components/common/page-enter"
-import { useBoardBySlugQuery } from "@/hooks/queries/use-board-by-slug"
 import {
   usePublicChangelogEntriesInfiniteQuery,
   usePublicChangelogQuery,
@@ -18,17 +17,14 @@ import {
 
 export function PublicChangelogEntryContent({
   workspaceSlug,
-  boardSlug,
   entryId,
 }: {
   workspaceSlug: string
-  boardSlug: string
   entryId: string
 }) {
-  const board = useBoardBySlugQuery({ workspaceSlug, boardSlug })
   const changelog = usePublicChangelogQuery(workspaceSlug)
   const entriesQuery = usePublicChangelogEntriesInfiniteQuery(workspaceSlug)
-  if (!board.data || !changelog.data || !entriesQuery.data) return null
+  if (!changelog.data || !entriesQuery.data) return null
 
   // Entries are paginated; the SSR seeded the first page (which
   // contains this entry by construction since it was located there).
@@ -43,17 +39,17 @@ export function PublicChangelogEntryContent({
     day: "numeric",
   })
 
-  const changelogHref = `/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}/changelog`
+  const changelogHref = `/${encodeURIComponent(workspaceSlug)}/changelog`
 
   return (
     <div className="min-h-svh bg-[var(--surface-3)] text-foreground">
       <PublicTopBar
-        workspaceName={board.data.workspace.name}
-        workspaceSlug={board.data.workspace.slug}
-        workspaceId={board.data.workspace.id}
-        workspaceOwnerId={board.data.workspace.ownerId}
-        boardSlug={board.data.board.slug}
-        boardId={board.data.board.id}
+        workspaceName={changelog.data.workspace.name}
+        workspaceSlug={changelog.data.workspace.slug}
+        workspaceId={changelog.data.workspace.id}
+        workspaceOwnerId={changelog.data.workspace.ownerId}
+        boardSlug={changelog.data.firstBoard?.slug}
+        boardId={changelog.data.firstBoard?.id}
         activeTab="changelog"
       />
 

@@ -203,7 +203,12 @@ changelogRouter.get(
       .limit(1)
 
     res.json({
-      workspace: { id: ws.id, name: ws.name, slug: ws.slug },
+      workspace: {
+        id: ws.id,
+        name: ws.name,
+        slug: ws.slug,
+        ownerId: ws.ownerId,
+      },
       firstBoard: firstBoard ?? null,
     })
   },

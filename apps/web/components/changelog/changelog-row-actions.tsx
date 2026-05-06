@@ -20,7 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import { MoreHorizontal } from "lucide-react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
@@ -89,8 +88,10 @@ export function ChangelogRowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[160px]">
-          <DropdownMenuItem asChild>
-            <Link href={`/dashboard/changelog/${entryId}/edit`}>Edit</Link>
+          <DropdownMenuItem
+            onSelect={() => router.push(`/dashboard/changelog/${entryId}/edit`)}
+          >
+            Edit
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={togglePublish} disabled={isPending}>
             {published ? "Unpublish" : "Publish"}

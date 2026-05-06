@@ -8,6 +8,15 @@ import { SubmitPostDialog } from "./submit-post-dialog"
 type TabId = "feedback" | "roadmap" | "changelog"
 type BoardOption = { id: string; name: string; slug: string }
 
+// Roadmap + Changelog are workspace-global — their tabs always link
+// to /<workspaceSlug>/{roadmap,changelog} regardless of which surface
+// the topbar is mounted on. Feedback links to the workspace's
+// all-feedback landing if no board context is provided, otherwise to
+// the current board's feed.
+//
+// Submit dialog target: explicit `boardId` (single board) wins;
+// otherwise `submitBoardOptions` renders a board-picker; if neither
+// is present the Submit CTA is hidden.
 export function PublicTopBar({
   workspaceName,
   workspaceSlug,
@@ -22,26 +31,24 @@ export function PublicTopBar({
   workspaceSlug: string
   workspaceId: string
   workspaceOwnerId: string
-  boardSlug: string
-  boardId: string
+  boardSlug?: string
+  boardId?: string
   activeTab?: TabId
-  /** All-feedback view passes the workspace's public boards; the
-   *  submit dialog renders a board picker so visitors choose a target.
-   *  When omitted, the dialog uses the implicit `boardId` directly. */
+  /** All-feedback / workspace-level views pass the workspace's public
+   *  boards; the submit dialog renders a board picker. When omitted,
+   *  the dialog targets the implicit `boardId` directly. */
   submitBoardOptions?: BoardOption[]
 }) {
   const initial = (workspaceName.charAt(0) || "E").toUpperCase()
 
-  // The Feedback tab is now the workspace's "All feedback" landing —
-  // a per-board feed view is just a filter applied via the sidebar.
-  // Roadmap and Changelog stay per-board because their content is
-  // board-scoped (status pipelines + per-board release notes).
   const allFeedbackHref = `/${encodeURIComponent(workspaceSlug)}`
-  const boardHref = `/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}`
+  const boardHref = boardSlug
+    ? `/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(boardSlug)}`
+    : allFeedbackHref
   const tabs: Array<{ id: TabId; label: string; href?: string; soon?: boolean }> = [
-    { id: "feedback", label: "Feedback", href: allFeedbackHref },
-    { id: "roadmap", label: "Roadmap", href: `${boardHref}/roadmap` },
-    { id: "changelog", label: "Changelog", href: `${boardHref}/changelog` },
+    { id: "feedback", label: "Feedback", href: boardSlug ? boardHref : allFeedbackHref },
+    { id: "roadmap", label: "Roadmap", href: `/${encodeURIComponent(workspaceSlug)}/roadmap` },
+    { id: "changelog", label: "Changelog", href: `/${encodeURIComponent(workspaceSlug)}/changelog` },
   ]
 
   return (
@@ -97,9 +104,7 @@ export function PublicTopBar({
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-3 sm:order-3">
             {submitBoardOptions ? (
-              // Picker mode — visitors on the all-feedback view choose
-              // a target board inside the dialog. If the workspace has
-              // no public boards yet, omit the dialog entirely.
+              // Board-picker mode (all-feedback / workspace-level surfaces).
               submitBoardOptions.length > 0 ? (
                 <SubmitPostDialog
                   boards={submitBoardOptions}
@@ -107,13 +112,13 @@ export function PublicTopBar({
                   workspaceOwnerId={workspaceOwnerId}
                 />
               ) : null
-            ) : (
+            ) : boardId ? (
               <SubmitPostDialog
                 boardId={boardId}
                 workspaceId={workspaceId}
                 workspaceOwnerId={workspaceOwnerId}
               />
-            )}
+            ) : null}
           </div>
         </div>
       </div>

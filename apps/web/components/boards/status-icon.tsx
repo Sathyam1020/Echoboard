@@ -9,6 +9,13 @@ import type { ComponentType, SVGProps } from "react"
 
 export type StatusKey = "review" | "planned" | "progress" | "shipped"
 
+export const STATUS_KEYS: readonly StatusKey[] = [
+  "review",
+  "planned",
+  "progress",
+  "shipped",
+] as const
+
 export const STATUS_LABEL: Record<StatusKey, string> = {
   review: "Under review",
   planned: "Planned",

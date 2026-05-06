@@ -10,7 +10,6 @@ import { PublicChangelog } from "@/components/changelog/public-changelog"
 import { InfiniteScrollSentinel } from "@/components/common/infinite-scroll-sentinel"
 import { PageEnter } from "@/components/common/page-enter"
 import { ChangelogEntrySkeletonList } from "@/components/skeletons/changelog-entry-skeleton"
-import { useBoardBySlugQuery } from "@/hooks/queries/use-board-by-slug"
 import {
   usePublicChangelogEntriesInfiniteQuery,
   usePublicChangelogQuery,
@@ -18,15 +17,9 @@ import {
 
 export function PublicChangelogContent({
   workspaceSlug,
-  boardSlug,
 }: {
   workspaceSlug: string
-  boardSlug: string
 }) {
-  // Three queries — board (top bar tabs anchored to this board),
-  // changelog meta (workspace + firstBoard), and changelog entries
-  // (paginated). All prefetched on the server.
-  const board = useBoardBySlugQuery({ workspaceSlug, boardSlug })
   const changelog = usePublicChangelogQuery(workspaceSlug)
   const entriesQuery = usePublicChangelogEntriesInfiniteQuery(workspaceSlug)
 
@@ -35,17 +28,17 @@ export function PublicChangelogContent({
     [entriesQuery.data],
   )
 
-  if (!board.data || !changelog.data) return null
+  if (!changelog.data) return null
 
   return (
     <div className="min-h-svh bg-[var(--surface-3)] text-foreground">
       <PublicTopBar
-        workspaceName={board.data.workspace.name}
-        workspaceSlug={board.data.workspace.slug}
-        workspaceId={board.data.workspace.id}
-        workspaceOwnerId={board.data.workspace.ownerId}
-        boardSlug={board.data.board.slug}
-        boardId={board.data.board.id}
+        workspaceName={changelog.data.workspace.name}
+        workspaceSlug={changelog.data.workspace.slug}
+        workspaceId={changelog.data.workspace.id}
+        workspaceOwnerId={changelog.data.workspace.ownerId}
+        boardSlug={changelog.data.firstBoard?.slug}
+        boardId={changelog.data.firstBoard?.id}
         activeTab="changelog"
       />
 
@@ -72,7 +65,6 @@ export function PublicChangelogContent({
                 <PublicChangelog
                   entries={entries}
                   workspaceSlug={changelog.data.workspace.slug}
-                  boardSlug={board.data.board.slug}
                 />
                 {entries.length > 0 ? (
                   <InfiniteScrollSentinel

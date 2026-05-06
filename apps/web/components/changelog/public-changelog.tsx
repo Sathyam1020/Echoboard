@@ -8,12 +8,9 @@ import type { PublicChangelogEntry } from "./types"
 export function PublicChangelog({
   entries,
   workspaceSlug,
-  boardSlug,
 }: {
   entries: PublicChangelogEntry[]
   workspaceSlug: string
-  /** Board slug for the per-entry detail URL — passed through to PublicEntry. */
-  boardSlug: string
 }) {
   if (entries.length === 0) {
     return (
@@ -32,7 +29,6 @@ export function PublicChangelog({
           key={e.id}
           entry={e}
           workspaceSlug={workspaceSlug}
-          boardSlug={boardSlug}
         />
       ))}
     </div>
